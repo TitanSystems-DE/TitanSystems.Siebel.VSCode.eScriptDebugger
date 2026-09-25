@@ -36,6 +36,9 @@ test('plans a service runtime in the required order', () => {
     ['C:\\extension\\service-implementation.escript', 'C:\\service\\(declerations).escript', 'C:\\service\\Alpha.escript', 'C:\\service\\Zeta.escript']
   );
   assert.equal(directMethodName('MyMethod.escript'), 'MyMethod');
+  assert.equal(directMethodName('UPPERCaseMethod.ESCRIPT'), 'UPPERCaseMethod');
+  assert.equal(directMethodName('lowerCaseMethod.escript'), 'lowerCaseMethod');
+  assert.notEqual(directMethodName('Test.escript'), directMethodName('test.escript'));
 });
 
 test('strips ST eScript types while preserving breakpoint positions', () => {

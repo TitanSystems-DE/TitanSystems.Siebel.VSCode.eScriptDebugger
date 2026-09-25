@@ -55,6 +55,8 @@ The runner deliberately executes eScript as a classic, non-strict script so lega
 
 A `DebugConfigurationProvider` translates the `escript` debug type into a Node launch configuration. The built-in JavaScript debugger starts `dist/runtime/runner.mjs`.
 
+The runner always uses VS Code's integrated terminal. `Clib.WriteLn` and `Clib.puts` write synchronously to the standard-output file descriptor, bypassing debugger console interception and stream buffering. Their output therefore appears live in the terminal during both debugging and run-without-debugging sessions. The Debug Console is not opened for eScript output.
+
 Each source file is executed through `vm.Script`, using its real path as `filename`. VS Code can consequently associate breakpoints, call-stack entries, and exceptions with the original `.escript` files.
 
 Connection data is Base64-encoded and passed to the launched process through `SIEBEL_ESCRIPT_CONNECTION`; it is removed from the process environment immediately after being read. The extension host stores the password exclusively through `ExtensionContext.secrets`.
@@ -79,7 +81,7 @@ In Standalone mode, the runner reads exactly one file. Before execution, it coll
 
 All sources are read first and jointly analyzed for reference signatures. Each file is then executed in the order above within the same global VM context.
 
-For `Direct`, the extension removes the selected filename extension and calls the corresponding global function.
+For `Direct`, the extension removes the selected filename extension and calls the corresponding global function. No case normalization is performed; the filename maps case-sensitively and 1:1 to the function name.
 
 For `InvokeMethod`, the runner creates two PropertySets through the synchronous Application facade. GUI inputs are written to `SERV_INPUTS` with `SetProperty`. After
 
@@ -88,6 +90,8 @@ InvokeMethod(methodName, SERV_INPUTS, SERV_OUTPUTS);
 ```
 
 the runner iterates over `GetFirstProperty` and `GetNextProperty`. Results are passed through a temporary JSON file. The extension host watches this file, sends the outputs to the Webview, and then removes it.
+
+The bundled implementation denies methods by default. User method files loaded later must override `Service_PreCanInvokeMethod` and `Service_PreInvokeMethod` as appropriate. The `canInvoke` argument must remain an `&` reference parameter so the generated call-by-reference bridge writes the decision back into `InvokeMethod`. `ContinueOperation` delegates to the next stage; `CancelOperation` marks the current stage as handled.
 
 ## ST eScript type processing
 
@@ -162,6 +166,10 @@ The current test suite covers, among other things:
 - protection of strings, comments, and regular expressions
 - reference parameters and write-back behavior
 - cross-file reference signatures
+- legacy `with` scope resolution for ordinary and remote objects
+- case-sensitive Direct entry-point mapping
+- Service-mode `InvokeMethod` dispatch, custom hook overrides, reference contracts, inputs, outputs, post-invocation, and rejection paths
+- service property helper behavior
 
 An actual SISNAPI login is not part of the automated tests and requires access to a suitable Siebel system.
 
@@ -173,7 +181,7 @@ Create an installable extension with `@vscode/vsce`:
 npx --yes @vscode/vsce package --no-dependencies --allow-missing-repository
 ```
 
-`--no-dependencies` is intentional because `ts-sisnapi` is already bundled into the extension and worker by `esbuild`. The resulting package is named after the current version, for example `siebel-escript-debugger-0.3.0.vsix`.
+`--no-dependencies` is intentional because `ts-sisnapi` is already bundled into the extension and worker by `esbuild`. The resulting package is named after the current version, for example `siebel-escript-debugger-0.4.0.vsix`.
 
 ## Changing the general service implementation
 

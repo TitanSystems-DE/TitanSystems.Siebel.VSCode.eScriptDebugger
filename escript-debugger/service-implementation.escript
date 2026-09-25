@@ -33,7 +33,16 @@ function GetNextProperty(){
 }
 
 // @this: Service
-function Service_PreCanInvokeMethod(methodName, canInvoke) { return ContinueOperation; }
+function Service_PreCanInvokeMethod(methodName, &canInvoke) {
+    canInvoke = false;
+    return ContinueOperation;
+}
+
+// @this: Service
+function CanInvokeMethod(methodName, &canInvoke) {
+    canInvoke = false;
+    return CancelOperation;
+}
 
 // @this: Service
 function Service_PreInvokeMethod(methodName, inputs, outputs) {}
@@ -44,16 +53,18 @@ function Service_InvokeMethod(methodName) {}
 // @this: Service
 function InvokeMethod(methodName, inputArgs, outputArgs)
 {
-    // check if the method can be invoked
-    if(!this.Service_PreCanInvokeMethod(methodName, true)) {
-        throw "cannot invoke method " + methodName;
+    var canInvoke = false;
+    var operationResult = this.Service_PreCanInvokeMethod(methodName, canInvoke);
+    if(operationResult == ContinueOperation) {
+        operationResult = this.CanInvokeMethod(methodName, canInvoke);
     }
+    if(!canInvoke) throw "cannot invoke method " + methodName;
 
     // pre-execution
-    var result = this.Service_PreInvokeMethod(methodName, inputArgs, outputArgs);
+    operationResult = this.Service_PreInvokeMethod(methodName, inputArgs, outputArgs);
     
     // execution if not handled in pre-invocation
-    if (result == ContinueOperation) {
+    if (operationResult == ContinueOperation) {
         throw "service doesn´t implement the method " + methodName;
     }
 
