@@ -40,6 +40,8 @@ The launcher provides two execution modes:
 
 The script can be taken from the active editor or selected in a file dialog. Both modes can run with the debugger or without breakpoints.
 
+Changing the script through **Active editor** or **Choose…** preserves the selected Standalone or Service mode.
+
 The compact launcher is permanently available in the VS Code sidebar. **Siebel eScript: Open Debugger** opens the same interface as a larger editor panel.
 
 ### Standalone interface
@@ -93,7 +95,7 @@ Breakpoints can be set in all participating files.
 
 ### Direct entry point
 
-For **Direct**, a dropdown lists every `.escript` file in the service directory except `(declerations).escript`. After building the runtime, the extension invokes a global function whose name matches the selected filename without `.escript`.
+For **Direct**, a dropdown lists every `.escript` file in the service directory except `(declerations).escript`. After building the runtime, the extension invokes a global function whose name matches the selected filename without `.escript`. This mapping is case-sensitive: the filename must match the function name exactly.
 
 Example:
 
@@ -126,6 +128,23 @@ InvokeMethod(methodName, SERV_INPUTS, SERV_OUTPUTS);
 
 When the call completes, all properties in `SERV_OUTPUTS` are read and displayed by name and value in the launcher.
 
+User method files must override the service hooks that decide whether and how a method is handled. `canInvoke` is a reference parameter and therefore must retain the `&` marker:
+
+```js
+function Service_PreCanInvokeMethod(methodName, &canInvoke) {
+  canInvoke = methodName == "MyMethod";
+  return CancelOperation;
+}
+
+function Service_PreInvokeMethod(methodName, inputs, outputs) {
+  if (methodName != "MyMethod") return ContinueOperation;
+  outputs.SetProperty("Result", inputs.GetProperty("Value"));
+  return CancelOperation;
+}
+```
+
+Returning `ContinueOperation` delegates processing to the next stage. Returning `CancelOperation` indicates that the hook handled the stage. An allowed method for which `Service_PreInvokeMethod` returns `ContinueOperation` must be implemented by another handler or the runtime reports it as unimplemented.
+
 ## Debugging
 
 The extension supports the standard VS Code debugging features:
@@ -134,7 +153,7 @@ The extension supports the standard VS Code debugging features:
 - step into, step over, and step out
 - Variables view
 - Call Stack
-- Debug Console
+- live `Clib.WriteLn` and `Clib.puts` output in the integrated terminal
 - stopping and restarting execution
 
 In Service mode, every loaded file runs under its original path, so breakpoints also work in helper functions and shared scripts.
@@ -170,6 +189,20 @@ SetResult("data", value);
 Inside the function, a reference parameter is used like an ordinary variable. Changes are written back to the caller when the function exits, including after an early `return` or exception.
 
 Assignable expressions such as variables, object properties, and array elements may be passed as reference arguments. Fully dynamic calls whose function name is resolved from a string at runtime cannot be matched to an `&` signature.
+
+## Legacy `with` statements
+
+Legacy Siebel eScript `with (object)` statements are supported for ordinary objects and synchronous remote Siebel objects:
+
+```js
+with (oBC) {
+  ClearToQuery();
+  ExecuteQuery(ForwardOnly);
+  FirstRecord();
+}
+```
+
+Scripts run as classic, non-strict scripts because JavaScript strict mode does not permit `with` statements.
 
 ## Siebel objects and global functions
 

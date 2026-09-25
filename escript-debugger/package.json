@@ -2,7 +2,7 @@
   "name": "siebel-escript-debugger",
   "displayName": "Siebel eScript Debugger",
   "description": "Debug and execute Siebel eScript files through SISNAPI.",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "publisher": "titansystems-de",
   "icon": "assets/icon.png",
   "repository": {

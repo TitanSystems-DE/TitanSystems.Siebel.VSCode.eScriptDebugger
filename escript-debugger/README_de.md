@@ -40,6 +40,8 @@ Die Startzentrale bietet zwei Ausführungsmodi:
 
 Das Skript kann aus dem aktiven Editor übernommen oder über einen Dateidialog gewählt werden. Beide Modi können mit Debugger oder ohne Haltepunkte ausgeführt werden.
 
+Beim Wechsel des Skripts über **Active editor** oder **Choose…** bleibt der ausgewählte Standalone- oder Service-Modus erhalten.
+
 Die kompakte Ansicht steht dauerhaft in der VS-Code-Seitenleiste zur Verfügung. **Siebel eScript: Open Debugger** öffnet dieselbe Oberfläche bei Bedarf als größere Editor-Panelansicht.
 
 ### Oberfläche im Standalone-Modus
@@ -93,7 +95,7 @@ Breakpoints können in allen beteiligten Dateien gesetzt werden.
 
 ### Startpunkt „Direct“
 
-Bei **Direct** zeigt ein Dropdown alle `.escript`-Dateien des Service-Ordners außer `(declerations).escript` an. Nach dem Aufbau der Runtime ruft die Extension eine globale Funktion auf, deren Name dem Dateinamen ohne `.escript` entspricht.
+Bei **Direct** zeigt ein Dropdown alle `.escript`-Dateien des Service-Ordners außer `(declerations).escript` an. Nach dem Aufbau der Runtime ruft die Extension eine globale Funktion auf, deren Name dem Dateinamen ohne `.escript` entspricht. Diese Zuordnung unterscheidet Groß- und Kleinschreibung: Der Dateiname muss exakt dem Funktionsnamen entsprechen.
 
 Beispiel:
 
@@ -126,6 +128,23 @@ InvokeMethod(methodName, SERV_INPUTS, SERV_OUTPUTS);
 
 Nach Abschluss liest die Extension alle Properties aus `SERV_OUTPUTS` und zeigt Name und Wert in der Startzentrale an.
 
+Die Methoden-Dateien des Benutzers müssen die Service-Hooks überschreiben, die entscheiden, ob und wie eine Methode verarbeitet wird. `canInvoke` ist ein Referenzparameter und muss deshalb das `&` beibehalten:
+
+```js
+function Service_PreCanInvokeMethod(methodName, &canInvoke) {
+  canInvoke = methodName == "MyMethod";
+  return CancelOperation;
+}
+
+function Service_PreInvokeMethod(methodName, inputs, outputs) {
+  if (methodName != "MyMethod") return ContinueOperation;
+  outputs.SetProperty("Result", inputs.GetProperty("Value"));
+  return CancelOperation;
+}
+```
+
+`ContinueOperation` übergibt die Verarbeitung an die nächste Stufe. `CancelOperation` signalisiert, dass der Hook die Stufe behandelt hat. Gibt `Service_PreInvokeMethod` für eine erlaubte Methode `ContinueOperation` zurück, muss ein anderer Handler sie implementieren; andernfalls meldet die Runtime die Methode als nicht implementiert.
+
 ## Debugging
 
 Die Extension unterstützt die üblichen Funktionen des VS-Code-Debuggers:
@@ -134,7 +153,7 @@ Die Extension unterstützt die üblichen Funktionen des VS-Code-Debuggers:
 - Einzelschritt, Prozedurschritt und Rücksprung
 - Variablenansicht
 - Call Stack
-- Debug-Konsole
+- Live-Ausgabe von `Clib.WriteLn` und `Clib.puts` im integrierten Terminal
 - Stoppen und Neustarten der Ausführung
 
 Im Service-Modus werden alle geladenen Dateien unter ihrem ursprünglichen Dateipfad ausgeführt. Breakpoints können daher auch in Hilfsfunktionen oder gemeinsam verwendeten Skripten gesetzt werden.
@@ -170,6 +189,20 @@ SetResult("data", value);
 Innerhalb der Funktion wird der Referenzparameter wie eine normale Variable verwendet. Änderungen werden beim Verlassen der Funktion an den Aufrufer zurückgeschrieben, auch bei einem frühen `return` oder einer Exception.
 
 Als Referenzargumente können zuweisbare Ausdrücke wie Variablen, Objekteigenschaften und Arrayelemente verwendet werden. Vollständig dynamische Funktionsaufrufe, deren Funktionsname erst zur Laufzeit aus einem String ermittelt wird, können keiner `&`-Signatur zugeordnet werden.
+
+## Ältere `with`-Anweisungen
+
+Ältere Siebel-eScript-Anweisungen der Form `with (object)` werden sowohl für gewöhnliche Objekte als auch für synchrone Remote-Siebel-Objekte unterstützt:
+
+```js
+with (oBC) {
+  ClearToQuery();
+  ExecuteQuery(ForwardOnly);
+  FirstRecord();
+}
+```
+
+Die Skripte werden als klassische, nicht-strikte Skripte ausgeführt, da der strikte JavaScript-Modus keine `with`-Anweisungen erlaubt.
 
 ## Siebel-Objekte und globale Funktionen
 

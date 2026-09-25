@@ -1,4 +1,4 @@
-import { readFileSync, readdirSync, writeFileSync } from 'node:fs';
+import { readFileSync, readdirSync, writeFileSync, writeSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import vm from 'node:vm';
@@ -16,6 +16,9 @@ delete process.env.SIEBEL_ESCRIPT_CONNECTION;
 const connection = JSON.parse(Buffer.from(encoded, 'base64').toString('utf8'));
 const bridge = new SyncBridge(new URL('./worker.mjs', import.meta.url), connection);
 const application = remoteObject(bridge, 0);
+// Write to the process file descriptor synchronously. This bypasses console API
+// interception and stream buffering performed by the JavaScript debugger.
+const writeLine = value => { writeSync(1, `${String(value ?? '')}\n`); };
 
 Object.assign(globalThis, {
   ...SIEBEL_CONSTANTS,
@@ -23,8 +26,8 @@ Object.assign(globalThis, {
   Application: () => application,
   ToNumber: value => Number(value), ToString: value => String(value),
   Clib: {
-    WriteLn: value => console.log(value),
-    puts: value => console.log(value),
+    WriteLn: writeLine,
+    puts: writeLine,
     getenv: name => process.env[name] ?? '',
     time: () => Math.floor(Date.now() / 1000)
   },

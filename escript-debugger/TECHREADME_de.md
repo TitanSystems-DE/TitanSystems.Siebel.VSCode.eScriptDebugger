@@ -55,6 +55,8 @@ Der Runner führt eScript bewusst als klassisches, nicht-striktes Skript aus, da
 
 Der Debug-Typ `escript` wird durch einen `DebugConfigurationProvider` auf eine Node-Launch-Konfiguration umgesetzt. Der integrierte JavaScript-Debugger startet `dist/runtime/runner.mjs`.
 
+Der Runner verwendet immer das integrierte Terminal von VS Code. `Clib.WriteLn` und `Clib.puts` schreiben synchron auf den Dateideskriptor der Standardausgabe und umgehen damit das Abfangen von Konsolenaufrufen sowie die Stream-Pufferung durch den Debugger. Ihre Ausgabe erscheint dadurch sowohl beim Debuggen als auch bei „Run without debugging“ live im Terminal. Die Debugkonsole wird für eScript-Ausgaben nicht geöffnet.
+
 Jede Quelldatei wird über `vm.Script` mit ihrem realen Dateipfad als `filename` ausgeführt. Dadurch ordnet VS Code Breakpoints, Call-Stack-Einträge und Exceptions den ursprünglichen `.escript`-Dateien zu.
 
 Die Verbindungsdaten werden für den gestarteten Prozess Base64-kodiert über `SIEBEL_ESCRIPT_CONNECTION` übertragen und unmittelbar nach dem Einlesen aus der Prozessumgebung entfernt. Das Kennwort wird im Extension-Host ausschließlich über `ExtensionContext.secrets` gespeichert.
@@ -79,7 +81,7 @@ Im Standalone-Modus liest der Runner genau eine Datei. Vor der Ausführung werde
 
 Zunächst werden alle Quellen gelesen und gemeinsam auf Referenzsignaturen untersucht. Danach wird jede Datei in der oben genannten Reihenfolge im selben globalen VM-Kontext ausgeführt.
 
-Bei `Direct` wird aus dem gewählten Dateinamen die Erweiterung entfernt und die entsprechende globale Funktion aufgerufen.
+Bei `Direct` wird aus dem gewählten Dateinamen die Erweiterung entfernt und die entsprechende globale Funktion aufgerufen. Es findet keine Normalisierung der Groß- und Kleinschreibung statt; der Dateiname wird case-sensitiv und 1:1 auf den Funktionsnamen abgebildet.
 
 Bei `InvokeMethod` erzeugt der Runner über die synchrone Application-Fassade zwei PropertySets. Die GUI-Eingaben werden mit `SetProperty` in `SERV_INPUTS` geschrieben. Nach
 
@@ -88,6 +90,8 @@ InvokeMethod(methodName, SERV_INPUTS, SERV_OUTPUTS);
 ```
 
 iteriert der Runner über `GetFirstProperty` und `GetNextProperty`. Das Ergebnis wird als temporäre JSON-Datei übergeben. Der Extension-Host überwacht diese Datei, überträgt die Outputs an die Webview und entfernt sie anschließend.
+
+Die mitgelieferte Implementierung lehnt Methoden standardmäßig ab. Später geladene Methoden-Dateien des Benutzers müssen `Service_PreCanInvokeMethod` und `Service_PreInvokeMethod` passend überschreiben. Das Argument `canInvoke` muss ein `&`-Referenzparameter bleiben, damit die generierte Call-by-Reference-Brücke die Entscheidung an `InvokeMethod` zurückschreibt. `ContinueOperation` übergibt an die nächste Stufe; `CancelOperation` kennzeichnet die aktuelle Stufe als behandelt.
 
 ## ST-eScript-Typverarbeitung
 
@@ -162,6 +166,10 @@ Die Tests prüfen derzeit unter anderem:
 - Schutz von Strings, Kommentaren und regulären Ausdrücken
 - Referenzparameter und Rückschreiben
 - dateiübergreifende Referenzsignaturen
+- ältere `with`-Namensauflösung für gewöhnliche und Remote-Objekte
+- case-sensitive Direct-Startpunktzuordnung
+- Service-`InvokeMethod`, Custom-Hook-Überschreibungen, Referenzverträge, Inputs, Outputs, Post-Invocation und Ablehnungspfade
+- Verhalten der Service-Property-Hilfsfunktionen
 
 Ein echter SISNAPI-Login ist kein Bestandteil der automatisierten Tests und benötigt Zugang zu einem passenden Siebel-System.
 
@@ -173,7 +181,7 @@ Eine installierbare Extension wird mit `@vscode/vsce` erstellt:
 npx --yes @vscode/vsce package --no-dependencies --allow-missing-repository
 ```
 
-`--no-dependencies` ist hier vorgesehen, weil `ts-sisnapi` bereits durch `esbuild` in Extension und Worker gebündelt wird. Das erzeugte Paket heißt entsprechend der aktuellen Version beispielsweise `siebel-escript-debugger-0.3.0.vsix`.
+`--no-dependencies` ist hier vorgesehen, weil `ts-sisnapi` bereits durch `esbuild` in Extension und Worker gebündelt wird. Das erzeugte Paket heißt entsprechend der aktuellen Version beispielsweise `siebel-escript-debugger-0.4.0.vsix`.
 
 ## Änderungen an der allgemeinen Service-Implementierung
 

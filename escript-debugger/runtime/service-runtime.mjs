@@ -12,5 +12,9 @@ export function serviceScriptPlan(folder, implementationFile, names) {
 }
 
 export function directMethodName(filename) {
-  return path.basename(filename, path.extname(filename));
+  const basename = path.basename(filename);
+  const extension = path.extname(basename);
+  // Function identifiers are case-sensitive. Only remove the extension; never
+  // normalize the filename because it maps 1:1 to the Direct entry point.
+  return extension ? basename.slice(0, -extension.length) : basename;
 }
