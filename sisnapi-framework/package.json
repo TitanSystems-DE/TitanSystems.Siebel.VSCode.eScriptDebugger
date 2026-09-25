@@ -1,0 +1,14 @@
+{
+  "name": "ts-sisnapi",
+  "version": "0.1.0",
+  "description": "Native TypeScript SISNAPI client and Siebel DataBean objects",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": { ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js" }, "./protocol": { "types": "./dist/protocol.d.ts", "import": "./dist/protocol.js" } },
+  "files": ["dist", "README.md", "LICENSE", "docs"],
+  "engines": { "node": ">=22" },
+  "scripts": { "build": "tsc -p tsconfig.json", "prepack": "npm run build", "test": "npm run build && node --test test/*.test.mjs", "probe": "npm run build && node examples/probe.mjs", "test:live": "npm run build && node examples/connect.mjs" },
+  "devDependencies": { "@types/node": "^22.0.0", "typescript": "^5.9.0" }
+}

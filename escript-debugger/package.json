@@ -1,0 +1,102 @@
+{
+  "name": "siebel-escript-debugger",
+  "displayName": "Siebel eScript Debugger",
+  "description": "Debug and execute Siebel eScript files through SISNAPI.",
+  "version": "0.1.0",
+  "publisher": "titansystems-de",
+  "icon": "assets/icon.png",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/TitanSystems-DE/TitanSystems.Siebel.VSCode.eScriptDebugger",
+    "directory": "escript-debugger"
+  },
+  "bugs": {
+    "url": "https://github.com/TitanSystems-DE/TitanSystems.Siebel.VSCode.eScriptDebugger/issues"
+  },
+  "engines": { "vscode": "^1.95.0", "node": ">=22" },
+  "categories": ["Debuggers", "Programming Languages"],
+  "activationEvents": ["onLanguage:escript", "onDebug:escript", "onView:siebelEscript.debugger"],
+  "main": "./dist/extension.js",
+  "files": ["dist", "syntaxes", "typings", "assets/icon.png", "assets/sidebar-icon.svg", "docs/screenshots/*.png", "language-configuration.json", "LICENSE", "README.md", "README_de.md", "TECHREADME.md", "TECHREADME_de.md"],
+  "scripts": {
+    "build": "tsc -p tsconfig.json --noEmit && tsc --noEmit --target ES2022 --module NodeNext --moduleResolution NodeNext test/typing-fixture.ts && node scripts/build.mjs",
+    "watch": "tsc -w -p tsconfig.json",
+    "test": "npm run build && node --test test/*.test.mjs",
+    "vscode:prepublish": "npm run build"
+  },
+  "dependencies": { "ts-sisnapi": "file:../sisnapi-framework/ts-sisnapi-0.1.0.tgz" },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@types/vscode": "^1.95.0",
+    "esbuild": "^0.25.0",
+    "typescript": "^5.9.0"
+  },
+  "contributes": {
+    "languages": [{
+      "id": "escript", "aliases": ["Siebel eScript", "eScript"],
+      "extensions": [".escript"], "configuration": "./language-configuration.json"
+    }],
+    "grammars": [{
+      "language": "escript", "scopeName": "source.escript",
+      "path": "./syntaxes/escript.tmLanguage.json"
+    }],
+    "viewsContainers": {
+      "activitybar": [{
+        "id": "siebelEscript",
+        "title": "Siebel eScript",
+        "icon": "assets/sidebar-icon.svg"
+      }]
+    },
+    "views": {
+      "siebelEscript": [{
+        "type": "webview",
+        "id": "siebelEscript.debugger",
+        "name": "Debugger"
+      }]
+    },
+    "debuggers": [{
+      "type": "escript", "label": "Siebel eScript",
+      "languages": ["escript"],
+      "configurationAttributes": {
+        "launch": {
+          "required": ["program"],
+          "properties": {
+            "program": { "type": "string", "description": "Path to the .escript file." },
+            "connection": { "type": "string", "description": "Connection profile name; omit to use the active profile." },
+            "stopOnEntry": { "type": "boolean", "default": false }
+          }
+        }
+      },
+      "initialConfigurations": [{
+        "type": "escript", "request": "launch", "name": "Debug current Siebel eScript file",
+        "program": "${file}", "stopOnEntry": false
+      }]
+    }],
+    "commands": [
+      { "command": "escript.openDebugger", "title": "Siebel eScript: Open Debugger", "icon": "$(debug-alt)" },
+      { "command": "escript.debugFile", "title": "Siebel eScript: Debug Current File" },
+      { "command": "escript.runFile", "title": "Siebel eScript: Run Current File" },
+      { "command": "escript.connections", "title": "Siebel eScript: Manage Connections" },
+      { "command": "escript.installTypings", "title": "Siebel eScript: Install Type Definitions" }
+    ],
+    "menus": {
+      "editor/title/run": [
+        { "command": "escript.openDebugger", "when": "editorLangId == escript", "group": "navigation@1" },
+        { "command": "escript.runFile", "when": "editorLangId == escript", "group": "navigation@2" },
+        { "command": "escript.debugFile", "when": "editorLangId == escript", "group": "navigation@3" }
+      ]
+    },
+    "keybindings": [{ "command": "escript.debugFile", "key": "f5", "when": "editorLangId == escript && !inDebugMode" }],
+    "configuration": {
+      "title": "Siebel eScript Debugger",
+      "properties": {
+        "escriptDebugger.activeConnection": {
+          "type": "string", "default": "", "description": "Name of the active Siebel connection profile. Prefer the connection manager command."
+        },
+        "escriptDebugger.requestTimeout": {
+          "type": "number", "default": 30000, "minimum": 1000, "description": "SISNAPI request timeout in milliseconds."
+        }
+      }
+    }
+  }
+}
