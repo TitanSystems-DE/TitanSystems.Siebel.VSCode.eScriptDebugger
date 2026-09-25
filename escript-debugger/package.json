@@ -17,7 +17,7 @@
   "categories": ["Debuggers", "Programming Languages"],
   "activationEvents": ["onLanguage:escript", "onDebug:escript", "onView:siebelEscript.debugger"],
   "main": "./dist/extension.js",
-  "files": ["dist", "syntaxes", "typings", "assets/icon.png", "assets/sidebar-icon.svg", "docs/screenshots/*.png", "language-configuration.json", "LICENSE", "README.md", "README_de.md", "TECHREADME.md", "TECHREADME_de.md"],
+  "files": ["dist", "syntaxes", "typings", "assets/icon.png", "assets/sidebar-icon.svg", "docs/screenshots/*.png", "language-configuration.json", "LICENSE", "CHANGELOG.md", "README.md", "README_de.md", "TECHREADME.md", "TECHREADME_de.md"],
   "scripts": {
     "build": "tsc -p tsconfig.json --noEmit && tsc --noEmit --target ES2022 --module NodeNext --moduleResolution NodeNext test/typing-fixture.ts && node scripts/build.mjs",
     "watch": "tsc -w -p tsconfig.json",
