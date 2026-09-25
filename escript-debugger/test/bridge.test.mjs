@@ -16,6 +16,20 @@ test('remote facade maps Siebel PascalCase methods and handles', () => {
   assert.deepEqual(encode(child), { __handle: 9 });
 });
 
+test('supports with statements for ordinary and remote Siebel objects', () => {
+  const calls = [], bridge = { call(op, target, args) { calls.push({ op, target, args }); return 'Smith'; } };
+  const context = { ordinary: { value: 4 }, busComp: decode(bridge, { __handle: 12 }) };
+  vm.createContext(context);
+  new vm.Script(`
+    with (ordinary) { ordinaryResult = value + 1; }
+    var field = "Last Name";
+    with (busComp) { remoteResult = GetFieldValue(field); }
+  `).runInContext(context);
+  assert.equal(context.ordinaryResult, 5);
+  assert.equal(context.remoteResult, 'Smith');
+  assert.deepEqual(calls, [{ op: 'call', target: 12, args: ['getFieldValue', 'Last Name'] }]);
+});
+
 test('plans a service runtime in the required order', () => {
   assert.deepEqual(
     serviceScriptPlan('C:\\service', 'C:\\extension\\service-implementation.escript', ['Zeta.escript', '(declerations).escript', 'Alpha.escript', 'notes.txt']),

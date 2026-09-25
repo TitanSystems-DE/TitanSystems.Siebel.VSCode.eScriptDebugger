@@ -30,8 +30,38 @@ export class SyncBridge {
 
 const camel = name => name.length ? name[0].toLowerCase() + name.slice(1) : name;
 
+// `with (siebelObject) { Method(); }` performs a [[HasProperty]] lookup before
+// reading Method. Remote objects do not have concrete method properties, so
+// advertise the synchronous Siebel API explicitly without capturing unrelated
+// local or global identifiers from the with scope.
+const remoteMembers = new Set([
+  'GetApplication', 'GetBusObject', 'GetService', 'NewPropertySet',
+  'InvokeMethod', 'GetProfileAttr', 'SetProfileAttr', 'GetServerVersion',
+  'LoginId', 'LoginName', 'PositionId', 'PositionName', 'CurrencyCode',
+  'SetPositionId', 'SetPositionName', 'Trace', 'TraceOn', 'TraceOff',
+  'GetSessionID', 'CancelQuery',
+  'Name', 'GetBusComp', 'Release',
+  'BusObject', 'ActivateField', 'ActivateMultipleFields', 'DeactivateFields',
+  'ClearToQuery', 'SetSearchExpr', 'SetSearchSpec', 'SetSortSpec',
+  'GetSearchExpr', 'GetSearchSpec', 'GetSortSpec', 'SetViewMode', 'GetViewMode',
+  'ExecuteQuery', 'ExecuteQuery2', 'FirstRecord', 'LastRecord', 'NextRecord',
+  'PreviousRecord', 'GetFieldValue', 'GetFormattedFieldValue', 'SetFieldValue',
+  'SetFormattedFieldValue', 'GetMultipleFieldValues', 'SetMultipleFieldValues',
+  'NewRecord', 'WriteRecord', 'DeleteRecord', 'UndoRecord', 'RefineQuery',
+  'SetNamedSearch', 'GetNamedSearch', 'GetUserProperty', 'SetUserProperty',
+  'GetPicklistBusComp', 'GetMVGBusComp', 'GetAssocBusComp', 'ParentBusComp',
+  'Pick', 'Associate',
+  'GetName', 'GetFirstProperty', 'GetNextProperty', 'GetProperty',
+  'PropertyExists', 'SetProperty', 'RemoveProperty',
+  'GetType', 'SetType', 'GetValue', 'SetValue', 'GetByteValue', 'SetByteValue',
+  'IsStringValue', 'GetPropertyCount', 'GetPropertyNames', 'Entries',
+  'GetChildCount', 'GetChild', 'AddChild', 'InsertChildAt', 'RemoveChild',
+  'Reset', 'Copy', 'EncodeAsString', 'DecodeFromString'
+]);
+
 export function remoteObject(bridge, handle) {
   return new Proxy(Object.create(null), {
+    has(_target, property) { return typeof property === 'string' && remoteMembers.has(property); },
     get(_target, property) {
       if (property === '__handle') return handle;
       if (property === Symbol.toStringTag) return 'SiebelObject';

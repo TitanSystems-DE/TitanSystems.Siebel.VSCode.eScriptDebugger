@@ -49,6 +49,8 @@ Der Runner muss eScript-Aufrufe synchron bereitstellen, während `ts-sisnapi` Pr
 
 PascalCase-Aufrufe wie `GetBusObject` werden an der Proxy-Grenze auf die camelCase-Methoden des TypeScript-Frameworks abgebildet.
 
+Der Runner führt eScript bewusst als klassisches, nicht-striktes Skript aus, damit ältere `with (object)`-Anweisungen gültig bleiben. Remote-Siebel-Proxies melden die bekannte synchrone API bei der JavaScript-Namensauflösung, sodass unqualifizierte Aufrufe wie `with (bc) { FirstRecord(); }` funktionieren, ohne andere lokale oder globale Bezeichner abzufangen.
+
 ## Debug-Integration
 
 Der Debug-Typ `escript` wird durch einen `DebugConfigurationProvider` auf eine Node-Launch-Konfiguration umgesetzt. Der integrierte JavaScript-Debugger startet `dist/runtime/runner.mjs`.
@@ -171,7 +173,7 @@ Eine installierbare Extension wird mit `@vscode/vsce` erstellt:
 npx --yes @vscode/vsce package --no-dependencies --allow-missing-repository
 ```
 
-`--no-dependencies` ist hier vorgesehen, weil `ts-sisnapi` bereits durch `esbuild` in Extension und Worker gebündelt wird. Das erzeugte Paket heißt entsprechend der aktuellen Version beispielsweise `siebel-escript-debugger-0.1.0.vsix`.
+`--no-dependencies` ist hier vorgesehen, weil `ts-sisnapi` bereits durch `esbuild` in Extension und Worker gebündelt wird. Das erzeugte Paket heißt entsprechend der aktuellen Version beispielsweise `siebel-escript-debugger-0.3.0.vsix`.
 
 ## Änderungen an der allgemeinen Service-Implementierung
 
