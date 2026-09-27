@@ -1,0 +1,146 @@
+TitanSystems Free-to-Use No-Derivatives License 1.0
+
+Copyright (c) 2026 TitanSystems. All rights reserved.
+
+1. Definitions
+
+"Software" means the Siebel eScript Debugger software and accompanying
+documentation made available under this License, excluding Third-Party
+Components.
+
+"Licensor" means TitanSystems and the copyright holder(s) of the Software.
+
+"Official Extension" means an unmodified binary release of the Software
+published by the Licensor through an official distribution channel designated
+by the Licensor, including the Licensor's official Visual Studio Marketplace
+listing or official repository releases.
+
+"Contribution" means a proposed modification submitted to the Licensor for
+possible inclusion in the official Software through the contribution mechanism
+designated by the Licensor.
+
+"Third-Party Components" means software, libraries, assets, documentation, or
+other materials in or used with the Software that are owned by third parties
+and governed by separate license terms.
+
+2. Permission to use the Official Extension
+
+Subject to this License, the Licensor grants each recipient a non-exclusive,
+worldwide, royalty-free, non-transferable license to install and run the
+Official Extension in unmodified form.
+
+This permission includes personal, educational, governmental, nonprofit, and
+commercial workplace use. In particular, a Siebel developer may use the
+Official Extension in the course of employment, consulting, or other paid work
+and may commercially use the scripts, configurations, analyses, and other work
+products created with it.
+
+Reasonable backup copies of the Official Extension may be made solely for the
+recipient's own authorized use.
+
+3. Source inspection
+
+Recipients may view and study the source code for evaluation, security review,
+learning, and preparation of Contributions. No right to use a modified version
+is granted except as expressly stated in Section 4.
+
+4. Contributions
+
+A recipient may modify the source code and locally build and test the modified
+Software only to prepare a good-faith Contribution to the official project.
+Such a modified version may be used only for the minimum local testing
+reasonably necessary to prepare that Contribution. It may not be deployed for
+personal, organizational, production, or other operational use and may not be
+provided to any third party except by submitting it to the Licensor through the
+designated contribution mechanism.
+
+By submitting a Contribution, the contributor grants the Licensor a perpetual,
+worldwide, irrevocable, royalty-free, transferable, and sublicensable license
+to use, reproduce, modify, prepare derivative works of, distribute, license,
+and otherwise exploit the Contribution as part of or in connection with the
+Software. The contributor represents that the contributor has the authority to
+grant these rights.
+
+5. Restrictions
+
+Except with the Licensor's prior written permission, no recipient may:
+
+a. modify, adapt, translate, patch, or prepare derivative works of the Software,
+   except solely as permitted by Section 4;
+
+b. use, deploy, publish, distribute, sublicense, sell, rent, lease, monetize,
+   provide, or otherwise make available any modified, unofficial, or derivative
+   version of the Software;
+
+c. sell, sublicense, rent, lease, commercially distribute, or otherwise charge
+   for the Software or access to it;
+
+d. bundle, embed, incorporate, white-label, rebrand, or integrate the Software
+   or any substantial portion of it into another application, extension,
+   service, platform, appliance, or commercial tool;
+
+e. represent any unofficial copy or version as authorized, supported, or
+   published by the Licensor; or
+
+f. remove or alter copyright, license, attribution, or trademark notices.
+
+For clarity, using the unmodified Official Extension as a development tool in a
+commercial environment is permitted by Section 2 and is not prohibited by this
+Section. The restrictions concern commercialization, alteration, redistribution,
+and integration of the Software itself.
+
+6. Separate written licenses
+
+The Licensor may grant additional rights, including rights to modify,
+integrate, redistribute, or commercially distribute the Software, only through
+a separate written agreement. No such right arises from payment, contribution,
+employment, access to source code, or use of the Official Extension.
+
+7. Third-Party Components and Oracle software
+
+This License applies only to rights in the Software that the Licensor is
+entitled to license. Third-Party Components remain governed exclusively by
+their respective license terms. Nothing in this License restricts, replaces,
+extends, or relicenses any Third-Party Component.
+
+The Software interoperates with Oracle Siebel through a user-supplied copy of
+Oracle's Siebel Java Data Bean. Siebel.jar and other Oracle binaries are not
+part of the Software, are not distributed under this License, and remain
+subject to the applicable Oracle license agreements.
+
+Oracle and Siebel are trademarks or registered trademarks of Oracle and/or its
+affiliates. This project is independent and is not affiliated with, sponsored
+by, endorsed by, or supported by Oracle.
+
+8. Ownership
+
+The Software is licensed, not sold. The Licensor retains all right, title, and
+interest in and to the Software except for Third-Party Components. No trademark
+or patent rights are granted except to the extent strictly necessary to
+exercise the permissions expressly granted in this License.
+
+9. Termination
+
+This License terminates automatically upon breach. Upon termination, the
+recipient must cease all use of the Software and delete all copies under the
+recipient's control, except to the extent retention is required by law. The
+Licensor may reinstate rights in writing.
+
+10. Disclaimer of warranty
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO WARRANTIES OF MERCHANTABILITY, FITNESS
+FOR A PARTICULAR PURPOSE, TITLE, AND NONINFRINGEMENT. THE ENTIRE RISK ARISING
+OUT OF USE OR PERFORMANCE OF THE SOFTWARE REMAINS WITH THE RECIPIENT.
+
+11. Limitation of liability
+
+TO THE MAXIMUM EXTENT PERMITTED BY LAW, THE LICENSOR SHALL NOT BE LIABLE FOR
+ANY CLAIM, DAMAGES, OR OTHER LIABILITY, WHETHER IN CONTRACT, TORT, OR
+OTHERWISE, ARISING FROM, OUT OF, OR IN CONNECTION WITH THE SOFTWARE OR ITS USE.
+
+12. Governing law and mandatory rights
+
+Nothing in this License excludes rights or remedies that cannot lawfully be
+excluded. Any choice of law, venue, or additional contractual terms must be
+specified in a separate written agreement with the Licensor.

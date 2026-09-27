@@ -1,0 +1,21 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "Siebel eScript", "scopeName": "source.escript",
+  "patterns": [
+    { "include": "#comment" }, { "include": "#string" },
+    { "name": "keyword.control.escript", "match": "\\b(break|case|catch|continue|default|delete|do|else|finally|for|function|if|in|instanceof|new|return|switch|throw|try|typeof|var|while|with)\\b" },
+    { "name": "constant.language.escript", "match": "\\b(true|false|null|undefined|ContinueOperation|CancelOperation|OperationComplete|ForwardBackward|ForwardOnly|NewBefore|NewAfter|NewBeforeCopy|NewAfterCopy|SalesRepView|ManagerView|PersonalView|AllView|NoneSetView|NoneView|NoneSetViewMode|OrganizationView|ContactView|GroupView|CatalogView|SubOrganizationView)\\b" },
+    { "name": "support.function.escript", "match": "\\b(TheApplication|Clib|ToNumber|ToString)\\b" },
+    { "name": "constant.numeric.escript", "match": "\\b(?:0[xX][0-9a-fA-F]+|\\d+(?:\\.\\d+)?)\\b" }
+  ],
+  "repository": {
+    "comment": { "patterns": [
+      { "name": "comment.line.double-slash.escript", "begin": "//", "end": "$" },
+      { "name": "comment.block.escript", "begin": "/\\*", "end": "\\*/" }
+    ] },
+    "string": { "patterns": [
+      { "name": "string.quoted.single.escript", "begin": "'", "end": "'", "patterns": [{ "name": "constant.character.escape.escript", "match": "\\\\." }] },
+      { "name": "string.quoted.double.escript", "begin": "\"", "end": "\"", "patterns": [{ "name": "constant.character.escape.escript", "match": "\\\\." }] }
+    ] }
+  }
+}
