@@ -1,6 +1,6 @@
 {
   "name": "siebel-escript-dbger",
-  "displayName": "Siebel eScript Debugger",
+  "displayName": "Siebel eScript-Debugger",
   "description": "Debug and execute Siebel eScript files through Oracle's Siebel Java Data Bean.",
   "version": "0.1.0",
   "license": "SEE LICENSE IN LICENSE",
