@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { decode, encode } from '../dist/runtime/sync-bridge.mjs';
 import { SIEBEL_CONSTANTS } from '../dist/runtime/constants.mjs';
+import { adaptSiebelCall } from '../dist/runtime/siebel-call.mjs';
 import { directMethodName, serviceScriptPlan } from '../dist/runtime/service-runtime.mjs';
 import { stripSiebelTypes } from '../dist/runtime/type-stripper.mjs';
 import { collectReferenceSignatures, transformSiebelReferences } from '../dist/runtime/reference-transformer.mjs';
@@ -127,4 +128,11 @@ test('exports the complete Siebel constant set with official values', () => {
     }
   );
   assert.equal(Object.isFrozen(SIEBEL_CONSTANTS), true);
+});
+
+test('maps eScript query cursor modes to Java Data Bean booleans', () => {
+  assert.deepEqual(adaptSiebelCall('executeQuery', [SIEBEL_CONSTANTS.ForwardBackward]), [false]);
+  assert.deepEqual(adaptSiebelCall('executeQuery', [SIEBEL_CONSTANTS.ForwardOnly]), [true]);
+  assert.deepEqual(adaptSiebelCall('executeQuery2', [SIEBEL_CONSTANTS.ForwardOnly, true]), [true, true]);
+  assert.deepEqual(adaptSiebelCall('setViewMode', [SIEBEL_CONSTANTS.AllView]), [SIEBEL_CONSTANTS.AllView]);
 });

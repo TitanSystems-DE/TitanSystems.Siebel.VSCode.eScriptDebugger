@@ -1,5 +1,6 @@
 import { workerData } from 'node:worker_threads';
 import { OracleSiebelClient } from './oracle-client.mjs';
+import { adaptSiebelCall } from './siebel-call.mjs';
 
 const { profile, password, requestTimeout, port, javaPath, siebelJar, siebelJars, bridgeSource } = workerData;
 const objects = new Map(), reverse = new WeakMap(); let nextHandle = 1;
@@ -82,13 +83,8 @@ port.on('message', async request => {
       const target = objects.get(request.target); if (!target) throw new Error('Invalid or released Siebel object');
       const [method, ...rawArgs] = request.args, fn = target[method];
       if (typeof fn !== 'function') throw new TypeError(`Siebel method '${method}' is not available`);
-      const callArgs = rawArgs.map(decode);
+      const callArgs = adaptSiebelCall(method, rawArgs.map(decode));
       Atomics.store(state, 1, 3);
-      // eScript exposes cursor modes as 256/257; the Java Data Bean uses 0/1.
-      if ((method === 'executeQuery' || method === 'executeQuery2') && callArgs.length) {
-        if (callArgs[0] === 256) callArgs[0] = 0;
-        else if (callArgs[0] === 257) callArgs[0] = 1;
-      }
       Atomics.store(state, 1, 4);
       const value = await fn.apply(target, callArgs);
       Atomics.store(state, 1, 5);

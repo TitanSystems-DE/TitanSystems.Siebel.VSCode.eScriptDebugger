@@ -16,6 +16,6 @@ await build({
   outfile: path('../dist/runtime/worker.mjs'),
   bundle: true, platform: 'node', format: 'esm', target: 'node22', sourcemap: true
 });
-for (const file of ['runner.mjs', 'sync-bridge.mjs', 'oracle-client.mjs', 'OracleSiebelBridge.java', 'OracleSiebelBridge.class', 'OracleSiebelBridge$MethodMatch.class', 'constants.mjs', 'service-runtime.mjs', 'type-stripper.mjs', 'reference-transformer.mjs', 'source-map.mjs'])
+for (const file of ['runner.mjs', 'sync-bridge.mjs', 'oracle-client.mjs', 'OracleSiebelBridge.java', 'OracleSiebelBridge.class', 'OracleSiebelBridge$MethodMatch.class', 'constants.mjs', 'siebel-call.mjs', 'service-runtime.mjs', 'type-stripper.mjs', 'reference-transformer.mjs', 'source-map.mjs'])
   await cp(new URL(`../runtime/${file}`, import.meta.url), new URL(`../dist/runtime/${file}`, import.meta.url));
 await cp(new URL('../service-implementation.escript', import.meta.url), new URL('../dist/runtime/service-implementation.escript', import.meta.url));
