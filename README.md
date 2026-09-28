@@ -13,6 +13,8 @@ The Oracle libraries are not distributed with the extension. Each user provides 
 
 Configure the absolute path to `Siebel.jar` in `escriptDebugger.siebelJar`. Keep all required companion JARs in the same directory. If `java` is not on `PATH`, configure `escriptDebugger.javaPath` as well.
 
+Version 0.2.0 compares the configured `Siebel.jar` with the SHA-256 of the build verified for the debugger. A different build produces a warning, but does not block execution; compatibility and correct operation cannot be guaranteed in that case.
+
 ## Documentation
 
 - [User guide](escript-debugger/README.md)
@@ -28,6 +30,8 @@ npx --yes @vscode/vsce package --no-dependencies --allow-missing-repository
 ```
 
 The generated VSIX does not contain Oracle JAR files.
+
+The release archive is named `siebel-escript-dbger-0.2.0.vsix`.
 
 ## License
 

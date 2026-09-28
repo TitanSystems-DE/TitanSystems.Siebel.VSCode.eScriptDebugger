@@ -119,7 +119,11 @@ This also writes values back after `return` and exceptions. The transformation a
 
 ## Cursor constants
 
-eScript uses the values `256` and `257` for `ForwardBackward` and `ForwardOnly`. Oracle's Java Data Bean expects `0` and `1`. At the method boundary, `worker.mjs` normalizes these values for `ExecuteQuery` and `ExecuteQuery2`.
+eScript uses the values `256` and `257` for `ForwardBackward` and `ForwardOnly`. Oracle's Java Data Bean expects the Boolean values `false` and `true`. At the method boundary, `siebel-call.mjs` normalizes these values for `ExecuteQuery` and `ExecuteQuery2`.
+
+## Siebel.jar compatibility check
+
+Before a launch or connection test, `jar-compatibility.mjs` calculates the SHA-256 of the configured `Siebel.jar`. It is compared with the verified build hash `A083007FD4A30F3CE0AA1A68F968496672BFECFFCB4F8332C22DBCEB58A8DDB1`. A mismatch displays a non-blocking warning; execution continues because other JAR builds may work, but their compatibility is not guaranteed. Missing or unreadable files remain blocking configuration errors.
 
 ## Ambient type declarations
 
@@ -161,6 +165,8 @@ The current test suite covers, among other things:
 
 - PascalCase proxies and object handles
 - the complete constant set
+- cursor-mode conversion for the Java Data Bean
+- matching and differing `Siebel.jar` hashes
 - service load order
 - position-preserving type processing
 - protection of strings, comments, and regular expressions
@@ -181,7 +187,7 @@ Create an installable extension with `@vscode/vsce`:
 npx --yes @vscode/vsce package --no-dependencies --allow-missing-repository
 ```
 
-`--no-dependencies` is intentional because the extension has no production npm dependencies. The resulting package for this release is `siebel-escript-dbger-0.1.0.vsix`. Oracle JARs are never included.
+`--no-dependencies` is intentional because the extension has no production npm dependencies. The resulting package for this release is `siebel-escript-dbger-0.2.0.vsix`. Oracle JARs are never included.
 
 ## Changing the general service implementation
 

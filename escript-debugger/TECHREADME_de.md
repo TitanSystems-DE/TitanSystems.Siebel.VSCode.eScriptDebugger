@@ -119,7 +119,11 @@ Dadurch erfolgt das Rückschreiben auch bei `return` und Exceptions. Die Transfo
 
 ## Cursor-Konstanten
 
-eScript verwendet für `ForwardBackward` und `ForwardOnly` die Werte `256` und `257`. Oracles Java Data Bean erwartet `0` und `1`. `worker.mjs` normalisiert diese Werte an der Methoden-Grenze für `ExecuteQuery` und `ExecuteQuery2`.
+eScript verwendet für `ForwardBackward` und `ForwardOnly` die Werte `256` und `257`. Oracles Java Data Bean erwartet die booleschen Werte `false` und `true`. `siebel-call.mjs` normalisiert diese Werte an der Methoden-Grenze für `ExecuteQuery` und `ExecuteQuery2`.
+
+## Siebel.jar-Kompatibilitätsprüfung
+
+Vor einem Start oder Verbindungstest berechnet `jar-compatibility.mjs` den SHA-256-Hash der konfigurierten `Siebel.jar`. Er wird mit dem Hash `A083007FD4A30F3CE0AA1A68F968496672BFECFFCB4F8332C22DBCEB58A8DDB1` der verifizierten Version verglichen. Eine Abweichung zeigt einen nicht blockierenden Warnhinweis; die Ausführung wird fortgesetzt, weil andere JAR-Versionen funktionieren können, deren Kompatibilität jedoch nicht garantiert ist. Fehlende oder nicht lesbare Dateien bleiben blockierende Konfigurationsfehler.
 
 ## Ambient Typdefinitionen
 
@@ -161,6 +165,8 @@ Die Tests prüfen derzeit unter anderem:
 
 - PascalCase-Proxy und Objekt-Handles
 - vollständigen Konstantensatz
+- Konvertierung der Cursor-Modi für die Java Data Bean
+- übereinstimmende und abweichende `Siebel.jar`-Hashes
 - Service-Ladereihenfolge
 - positionsstabile Typverarbeitung
 - Schutz von Strings, Kommentaren und regulären Ausdrücken
@@ -181,7 +187,7 @@ Eine installierbare Extension wird mit `@vscode/vsce` erstellt:
 npx --yes @vscode/vsce package --no-dependencies --allow-missing-repository
 ```
 
-`--no-dependencies` ist vorgesehen, weil die Extension keine produktiven npm-Abhängigkeiten besitzt. Das Paket dieser Version heißt `siebel-escript-dbger-0.1.0.vsix`. Oracle-JARs sind darin nicht enthalten.
+`--no-dependencies` ist vorgesehen, weil die Extension keine produktiven npm-Abhängigkeiten besitzt. Das Paket dieser Version heißt `siebel-escript-dbger-0.2.0.vsix`. Oracle-JARs sind darin nicht enthalten.
 
 ## Änderungen an der allgemeinen Service-Implementierung
 

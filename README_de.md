@@ -6,6 +6,8 @@ Die Oracle-Bibliotheken werden nicht mit der Extension ausgeliefert. Jeder Benut
 
 ## Voraussetzungen
 
+Version 0.2.0 vergleicht die konfigurierte `Siebel.jar` mit dem SHA-256-Hash der für den Debugger verifizierten Version. Eine abweichende Version erzeugt einen Warnhinweis, blockiert die Ausführung jedoch nicht; Kompatibilität und korrekte Funktion können in diesem Fall nicht garantiert werden.
+
 - Visual Studio Code ab Version 1.95
 - Java 8 oder neuer
 - Oracle `Siebel.jar` und die passende Sprach-JAR der eingesetzten Siebel-Installation
@@ -28,6 +30,8 @@ npx --yes @vscode/vsce package --no-dependencies --allow-missing-repository
 ```
 
 Die erzeugte VSIX-Datei enthält keine Oracle-JAR-Dateien.
+
+Das Release-Archiv heißt `siebel-escript-dbger-0.2.0.vsix`.
 
 ## Lizenz
 

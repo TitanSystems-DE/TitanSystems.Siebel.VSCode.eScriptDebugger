@@ -9,6 +9,8 @@ Für die Sprachunterstützung beim Bearbeiten von Siebel-Skripten wird die ergä
 
 ## Erste Schritte
 
+Version 0.2.0 vergleicht die konfigurierte `Siebel.jar` mit dem SHA-256-Hash der für den Debugger verifizierten JAR-Version. Bei einer Abweichung erscheint ein nicht blockierender Warnhinweis, da Kompatibilität und korrekte Funktion nicht garantiert werden können.
+
 Voraussetzung ist Java 8 oder neuer (`escriptDebugger.javaPath`). Die von Oracle bereitgestellte `Siebel.jar` und ihre Begleit-JARs müssen in einem zentralen Verzeichnis liegen. Dazu gehört für Englisch `SiebelJI_enu.jar` beziehungsweise `SiebelJI_<Sprache>.jar`. Der absolute Pfad zu `Siebel.jar` wird mit `escriptDebugger.siebelJar` konfiguriert. Oracle-JARs werden nicht mit der Extension ausgeliefert.
 
 1. Öffne eine `.escript`-Datei in VS Code.

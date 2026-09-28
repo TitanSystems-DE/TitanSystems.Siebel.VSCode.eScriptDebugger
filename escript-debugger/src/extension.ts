@@ -2,6 +2,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import * as vscode from 'vscode';
+import { inspectSiebelJar } from '../runtime/jar-compatibility.mjs';
 import { OracleSiebelClient } from '../runtime/oracle-client.mjs';
 import { DebuggerSidebarProvider, openDebuggerUi, type ServiceLaunchConfig, type UiActions } from './debugger-ui.js';
 import { ConnectionProfile, ProfileStore } from './profiles.js';
@@ -175,6 +176,17 @@ async function oracleRuntime(context: vscode.ExtensionContext | string, language
   if (!siebelJar || !path.isAbsolute(siebelJar)) { void vscode.window.showErrorMessage('Configure an absolute path in escriptDebugger.siebelJar before connecting.'); return; }
   try { if (!(await fs.promises.stat(siebelJar)).isFile()) throw new Error(); }
   catch { void vscode.window.showErrorMessage(`Siebel.jar was not found at '${siebelJar}'.`); return; }
+  try {
+    const compatibility = await inspectSiebelJar(siebelJar);
+    if (!compatibility.compatible) {
+      void vscode.window.showWarningMessage(
+        `The configured Siebel.jar differs from the verified version (expected SHA-256 ${compatibility.expectedHash}, found ${compatibility.actualHash}). Compatibility and correct operation cannot be guaranteed.`
+      );
+    }
+  } catch (error) {
+    void vscode.window.showErrorMessage(`Could not verify Siebel.jar at '${siebelJar}': ${error instanceof Error ? error.message : String(error)}`);
+    return;
+  }
   const jarDirectory = path.dirname(siebelJar);
   const jarNames = (await fs.promises.readdir(jarDirectory)).filter(name => name.toLowerCase().endsWith('.jar'));
   const localeJar = `siebelji_${language.toLowerCase()}.jar`;

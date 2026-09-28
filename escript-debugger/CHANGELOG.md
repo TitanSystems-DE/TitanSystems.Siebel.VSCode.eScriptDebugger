@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.0 - 2026-09-28
+
+- Correctly maps eScript cursor modes `ForwardBackward` and `ForwardOnly` to the Boolean arguments expected by the Java Data Bean for `ExecuteQuery` and `ExecuteQuery2`.
+- Compares the configured `Siebel.jar` with the SHA-256 of the build verified for this extension.
+- Shows a non-blocking warning when a different JAR build is selected because compatibility and correct operation cannot be guaranteed.
+- Adds automated regression tests for cursor conversion and JAR compatibility detection.
+
 ## 0.1.0 - 2026-09-27
 
 - Initial release of the Siebel eScript Debugger.

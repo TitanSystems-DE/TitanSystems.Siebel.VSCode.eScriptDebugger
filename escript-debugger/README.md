@@ -11,6 +11,7 @@ For language support while editing Siebel scripts, use of the companion extensio
 
 1. Install Java 8 or newer and make `java` available, or configure `escriptDebugger.javaPath`.
 2. Place the Oracle-provided `Siebel.jar` and its companion JARs in a central directory. This includes `SiebelJI_enu.jar` for English or the corresponding `SiebelJI_<language>.jar`. Configure the absolute path to `Siebel.jar` in `escriptDebugger.siebelJar`. Oracle JARs are not included with the extension.
+   Version 0.2.0 compares this file with the SHA-256 of the JAR build verified for the debugger. A difference produces a non-blocking warning because compatibility and correct operation cannot be guaranteed.
 3. Open an `.escript` file in VS Code.
 4. Run **Siebel eScript: Manage Connections** and create a connection profile.
 5. Open the launcher through the Siebel eScript icon in the Activity Bar, the editor debug icon, or **Siebel eScript: Open Debugger**.

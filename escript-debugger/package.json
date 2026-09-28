@@ -2,7 +2,7 @@
   "name": "siebel-escript-dbger",
   "displayName": "Siebel eScript-Debugger",
   "description": "Debug and execute Siebel eScript files through Oracle's Siebel Java Data Bean.",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "license": "SEE LICENSE IN LICENSE",
   "publisher": "titansystems-de",
   "icon": "assets/icon.png",
@@ -99,7 +99,7 @@
           "type": "number", "default": 30000, "minimum": 1000, "description": "Siebel Java Data Bean request timeout in milliseconds."
         },
         "escriptDebugger.siebelJar": {
-          "type": "string", "default": "", "scope": "machine", "description": "Absolute path to Oracle's Siebel.jar. Put its companion JARs, including SiebelJI_<language>.jar, in the same central directory. Oracle JARs are not included with this extension."
+          "type": "string", "default": "", "scope": "machine", "description": "Absolute path to Oracle's Siebel.jar. The debugger compares its SHA-256 with the verified build and warns about differences. Put its companion JARs, including SiebelJI_<language>.jar, in the same central directory. Oracle JARs are not included with this extension."
         },
         "escriptDebugger.javaPath": {
           "type": "string", "default": "java", "scope": "machine", "description": "Path to a Java 8 or newer executable used to load Siebel.jar."
