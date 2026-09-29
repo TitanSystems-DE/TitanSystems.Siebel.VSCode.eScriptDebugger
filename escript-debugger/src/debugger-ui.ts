@@ -9,6 +9,7 @@ export interface ServiceLaunchConfig {
   directFile?: string;
   methodName?: string;
   inputs: Array<{ name: string; value: string }>;
+  debugLocalServices: boolean;
 }
 
 export interface UiActions {
@@ -58,11 +59,11 @@ function configureWebview(webview: vscode.Webview, context: vscode.ExtensionCont
           if (entryPoint === 'direct') {
             const directFile = typeof message.directFile === 'string' ? message.directFile : '';
             if (!serviceFiles(requestedProgram).includes(directFile)) { void vscode.window.showErrorMessage('Select a valid Direct script.'); return; }
-            service = { entryPoint, directFile, inputs: [] };
+            service = { entryPoint, directFile, inputs: [], debugLocalServices: message.debugLocalServices === true };
           } else {
             const methodName = typeof message.methodName === 'string' ? message.methodName.trim() : '';
             if (!methodName) { void vscode.window.showErrorMessage('Enter an InvokeMethod method name.'); return; }
-            service = { entryPoint, methodName, inputs };
+            service = { entryPoint, methodName, inputs, debugLocalServices: message.debugLocalServices === true };
           }
         } else if (message.mode !== 'standalone') return;
         await actions.launch(requestedProgram, connection, message.noDebug === true, service, outputs => void webview.postMessage({ command: 'serviceOutputs', outputs }));
@@ -94,6 +95,16 @@ function serviceFiles(program: string): string[] {
   } catch { return []; }
 }
 
+function localServiceNames(program: string): string[] {
+  if (!program) return [];
+  try {
+    return readdirSync(path.dirname(path.dirname(program)), { withFileTypes: true })
+      .filter(entry => entry.isDirectory())
+      .map(entry => entry.name)
+      .sort((a, b) => a.localeCompare(b, 'en', { sensitivity: 'base' }));
+  } catch { return []; }
+}
+
 function escape(value: string): string {
   return value.replace(/[&<>"']/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[character]!);
 }
@@ -106,6 +117,11 @@ function html(webview: vscode.Webview, context: vscode.ExtensionContext, store: 
   const options = profiles.length ? profiles.map(profile => `<option value="${escape(profile.name)}"${profile.name === active ? ' selected' : ''}>${escape(profile.name)} — ${escape(profile.username)}@${escape(profile.url)}</option>`).join('') : '<option value="">No connection configured</option>';
   const files = serviceFiles(program);
   const directOptions = files.length ? files.map(file => `<option value="${escape(file)}">${escape(file)}</option>`).join('') : '<option value="">No service scripts found</option>';
+  const startingService = program ? path.basename(path.dirname(program)) : '';
+  const localServices = localServiceNames(program);
+  const localServiceItems = localServices.length
+    ? `<ul class="local-service-list">${localServices.map(name => `<li><span>${escape(name)}</span>${name.toLocaleLowerCase('en') === startingService.toLocaleLowerCase('en') ? '<span class="service-kind">Starting service</span>' : '<span class="service-kind">Local service</span>'}</li>`).join('')}</ul>`
+    : '<div class="empty">No service folders were found beside the selected service.</div>';
   const filename = program ? path.basename(program) : 'No .escript file selected';
   const polishCss = `
     body { background:
@@ -133,6 +149,12 @@ function html(webview: vscode.Webview, context: vscode.ExtensionContext, store: 
     #methodName { width: 100%; margin: 7px 0 12px; }
     #directFile { margin-top: 7px; }
     .output-table tbody tr:hover { background: var(--vscode-list-hoverBackground); }
+    .local-services { margin-top: 13px; padding-top: 12px; border-top: 1px solid var(--vscode-panel-border); }
+    .local-services strong { display: block; margin-bottom: 8px; }
+    .local-service-list { list-style: none; margin: 0; padding: 0; }
+    .local-service-list li { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 7px 8px; border-radius: 4px; }
+    .local-service-list li:nth-child(odd) { background: color-mix(in srgb, var(--vscode-list-hoverBackground) 55%, transparent); }
+    .service-kind { flex: 0 0 auto; color: var(--vscode-descriptionForeground); font-size: 11px; }
     @media (max-width: 540px) {
       body { padding: 16px 12px; }
       header { gap: 11px; } h1 { font-size: 17px; }
@@ -153,8 +175,8 @@ function html(webview: vscode.Webview, context: vscode.ExtensionContext, store: 
 <style nonce="${nonce}">${polishCss}</style><header><img class="logo" src="${iconUri}" alt=""><div><h1>Siebel eScript Debugger</h1><div class="subtle">Configure and start an eScript runtime.</div></div></header>
 <h2>Debug method</h2><div class="modes"><div id="standaloneMode" class="mode selected"><span class="badge">Selected</span><div class="mode-heading"><svg class="mode-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="3.5" width="16" height="17" rx="2"/><path d="M8 8h8M8 12h5M8 16h7"/><path d="m16.5 13.5 3 2-3 2z" fill="currentColor" stroke="none"/></svg><strong>Standalone</strong></div><span>Run only the selected script.</span></div><div id="serviceMode" class="mode"><span class="badge">Selected</span><div class="mode-heading"><svg class="mode-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="7" height="6" rx="1.5"/><rect x="14" y="4" width="7" height="6" rx="1.5"/><rect x="8.5" y="15" width="7" height="5" rx="1.5"/><path d="M6.5 10v2.5H12V15m5.5-5v2.5H12"/></svg><strong>Service</strong></div><span>Build a runtime from every script in the selected script's folder.</span></div></div>
 <h2>Script</h2><div class="field file"><div class="file-name"><strong>${escape(filename)}</strong><span class="subtle" title="${escape(program)}">${escape(program || 'Open an eScript file or select one from disk.')}</span></div><button id="active" class="secondary">Active editor</button><button id="choose" class="secondary">Choose…</button></div>
-<section id="serviceConfig" class="hidden"><h2>Service entry point</h2><div class="field"><div class="entry-tabs"><label><input type="radio" name="entry" value="invokeMethod" checked> InvokeMethod</label><label><input type="radio" name="entry" value="direct"> Direct</label></div><div id="invokeConfig"><label>Method name</label><input id="methodName" type="text" placeholder="MethodName" style="width:100%;margin:6px 0 10px"><div><strong>Input properties</strong><div id="inputs"></div><button id="addInput" class="link">+ Add property</button></div></div><div id="directConfig" class="hidden"><label for="directFile">Script / method</label><select id="directFile" style="margin-top:6px">${directOptions}</select><p class="subtle">The function named like the file (without .escript) will be called after the runtime is loaded.</p></div></div><h2>Output properties</h2><div class="field"><div id="outputEmpty" class="empty">Outputs appear here after InvokeMethod has completed.</div><table id="outputs" class="output-table hidden"><thead><tr><th>Name</th><th>Value</th></tr></thead><tbody></tbody></table></div></section>
+<section id="serviceConfig" class="hidden"><h2>Service entry point</h2><div class="field"><div class="entry-tabs"><label><input type="radio" name="entry" value="invokeMethod" checked> InvokeMethod</label><label><input type="radio" name="entry" value="direct"> Direct</label></div><div id="invokeConfig"><label>Method name</label><input id="methodName" type="text" placeholder="MethodName" style="width:100%;margin:6px 0 10px"><div><strong>Input properties</strong><div id="inputs"></div><button id="addInput" class="link">+ Add property</button></div></div><div id="directConfig" class="hidden"><label for="directFile">Script / method</label><select id="directFile" style="margin-top:6px">${directOptions}</select><p class="subtle">The function named like the file (without .escript) will be called after the runtime is loaded.</p></div></div><h2>Local services</h2><div class="field"><label><input id="debugLocalServices" type="checkbox"> Debug local sibling services</label><p class="subtle">Resolve TheApplication().GetService() from matching service folders next to the selected service. Services without a matching folder continue to use Siebel.</p><div id="localServices" class="local-services hidden"><strong>Found local services (${localServices.length})</strong>${localServiceItems}</div></div><h2>Output properties</h2><div class="field"><div id="outputEmpty" class="empty">Outputs appear here after InvokeMethod has completed.</div><table id="outputs" class="output-table hidden"><thead><tr><th>Name</th><th>Value</th></tr></thead><tbody></tbody></table></div></section>
 <h2>Connection</h2><div class="field"><select id="connection" aria-label="Siebel connection">${options}</select><button id="connections" class="link">Manage connections</button></div>
 <footer><span id="modeLabel" class="subtle">Mode: Standalone</span><span class="spacer"></span><button id="run" class="secondary">Run without debugging</button><button id="debug">Start debugging</button></footer>
-</main><script nonce="${nonce}">const vscode=acquireVsCodeApi(),program=${JSON.stringify(program)};let mode=${JSON.stringify(initialMode)};const byId=id=>document.getElementById(id),setMode=value=>{mode=value;byId('standaloneMode').classList.toggle('selected',value==='standalone');byId('serviceMode').classList.toggle('selected',value==='service');byId('serviceConfig').classList.toggle('hidden',value!=='service');byId('modeLabel').textContent='Mode: '+(value==='service'?'Service':'Standalone')};setMode(mode);byId('standaloneMode').onclick=()=>setMode('standalone');byId('serviceMode').onclick=()=>setMode('service');document.querySelectorAll('input[name="entry"]').forEach(r=>r.onchange=()=>{byId('invokeConfig').classList.toggle('hidden',r.value!=='invokeMethod'||!r.checked);byId('directConfig').classList.toggle('hidden',r.value!=='direct'||!r.checked)});const addInput=(name='',value='')=>{const row=document.createElement('div');row.className='input-row';const n=document.createElement('input');n.placeholder='Name';n.value=name;const v=document.createElement('input');v.placeholder='Value';v.value=value;const remove=document.createElement('button');remove.className='secondary remove';remove.textContent='×';remove.onclick=()=>row.remove();row.append(n,v,remove);byId('inputs').append(row)};byId('addInput').onclick=()=>addInput();const launch=noDebug=>{const entryPoint=document.querySelector('input[name="entry"]:checked').value,inputs=[...document.querySelectorAll('.input-row')].map(row=>({name:row.children[0].value,value:row.children[1].value}));vscode.postMessage({command:'launch',mode,program,connection:byId('connection').value,noDebug,entryPoint,directFile:byId('directFile').value,methodName:byId('methodName').value,inputs})};byId('debug').onclick=()=>launch(false);byId('run').onclick=()=>launch(true);byId('choose').onclick=()=>vscode.postMessage({command:'chooseFile',mode});byId('active').onclick=()=>vscode.postMessage({command:'useActiveFile',mode});byId('connections').onclick=()=>vscode.postMessage({command:'manageConnections'});window.addEventListener('message',event=>{if(event.data.command!=='serviceOutputs')return;const entries=Object.entries(event.data.outputs||{}),tbody=byId('outputs').querySelector('tbody');tbody.textContent='';for(const [name,value]of entries){const row=tbody.insertRow(),a=row.insertCell(),b=row.insertCell();a.textContent=name;b.textContent=value}byId('outputs').classList.toggle('hidden',!entries.length);byId('outputEmpty').classList.toggle('hidden',entries.length>0);if(!entries.length)byId('outputEmpty').textContent='InvokeMethod completed without output properties.'});</script></body></html>`;
+</main><script nonce="${nonce}">const vscode=acquireVsCodeApi(),program=${JSON.stringify(program)};let mode=${JSON.stringify(initialMode)};const byId=id=>document.getElementById(id),setMode=value=>{mode=value;byId('standaloneMode').classList.toggle('selected',value==='standalone');byId('serviceMode').classList.toggle('selected',value==='service');byId('serviceConfig').classList.toggle('hidden',value!=='service');byId('modeLabel').textContent='Mode: '+(value==='service'?'Service':'Standalone')};setMode(mode);byId('standaloneMode').onclick=()=>setMode('standalone');byId('serviceMode').onclick=()=>setMode('service');document.querySelectorAll('input[name="entry"]').forEach(r=>r.onchange=()=>{byId('invokeConfig').classList.toggle('hidden',r.value!=='invokeMethod'||!r.checked);byId('directConfig').classList.toggle('hidden',r.value!=='direct'||!r.checked)});const localServices=byId('debugLocalServices'),syncLocalServices=()=>byId('localServices').classList.toggle('hidden',!localServices.checked);localServices.onchange=syncLocalServices;syncLocalServices();const addInput=(name='',value='')=>{const row=document.createElement('div');row.className='input-row';const n=document.createElement('input');n.placeholder='Name';n.value=name;const v=document.createElement('input');v.placeholder='Value';v.value=value;const remove=document.createElement('button');remove.className='secondary remove';remove.textContent='×';remove.onclick=()=>row.remove();row.append(n,v,remove);byId('inputs').append(row)};byId('addInput').onclick=()=>addInput();const launch=noDebug=>{const entryPoint=document.querySelector('input[name="entry"]:checked').value,inputs=[...document.querySelectorAll('.input-row')].map(row=>({name:row.children[0].value,value:row.children[1].value}));vscode.postMessage({command:'launch',mode,program,connection:byId('connection').value,noDebug,entryPoint,directFile:byId('directFile').value,methodName:byId('methodName').value,inputs,debugLocalServices:localServices.checked})};byId('debug').onclick=()=>launch(false);byId('run').onclick=()=>launch(true);byId('choose').onclick=()=>vscode.postMessage({command:'chooseFile',mode});byId('active').onclick=()=>vscode.postMessage({command:'useActiveFile',mode});byId('connections').onclick=()=>vscode.postMessage({command:'manageConnections'});window.addEventListener('message',event=>{if(event.data.command!=='serviceOutputs')return;const entries=Object.entries(event.data.outputs||{}),tbody=byId('outputs').querySelector('tbody');tbody.textContent='';for(const [name,value]of entries){const row=tbody.insertRow(),a=row.insertCell(),b=row.insertCell();a.textContent=name;b.textContent=value}byId('outputs').classList.toggle('hidden',!entries.length);byId('outputEmpty').classList.toggle('hidden',entries.length>0);if(!entries.length)byId('outputEmpty').textContent='InvokeMethod completed without output properties.'});</script></body></html>`;
 }

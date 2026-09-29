@@ -6,8 +6,10 @@ import test from 'node:test';
 import { decode, encode } from '../dist/runtime/sync-bridge.mjs';
 import { publishRequest } from '../dist/runtime/oracle-client.mjs';
 import { SIEBEL_CONSTANTS } from '../dist/runtime/constants.mjs';
+import { createLocalServiceResolver } from '../dist/runtime/local-service-runtime.mjs';
+import { publishRequest } from '../dist/runtime/oracle-client.mjs';
 import { adaptSiebelCall } from '../dist/runtime/siebel-call.mjs';
-import { directMethodName, serviceScriptPlan } from '../dist/runtime/service-runtime.mjs';
+import { directMethodName, localServiceFolders, serviceScriptPlan } from '../dist/runtime/service-runtime.mjs';
 import { stripSiebelTypes } from '../dist/runtime/type-stripper.mjs';
 import { collectReferenceSignatures, transformSiebelReferences } from '../dist/runtime/reference-transformer.mjs';
 import { debuggableScript } from '../dist/runtime/source-map.mjs';
@@ -57,6 +59,52 @@ test('plans a service runtime in the required order', () => {
   assert.equal(directMethodName('UPPERCaseMethod.ESCRIPT'), 'UPPERCaseMethod');
   assert.equal(directMethodName('lowerCaseMethod.escript'), 'lowerCaseMethod');
   assert.notEqual(directMethodName('Test.escript'), directMethodName('test.escript'));
+});
+
+test('discovers local services from sibling folder names', () => {
+  const entries = [
+    { name: 'Starting Service', isDirectory: () => true },
+    { name: 'Called Service', isDirectory: () => true },
+    { name: 'notes.txt', isDirectory: () => false }
+  ];
+  assert.deepEqual(
+    [...localServiceFolders('C:\\services\\Starting Service', entries)],
+    [
+      ['starting service', 'C:\\services\\Starting Service'],
+      ['called service', 'C:\\services\\Called Service']
+    ]
+  );
+});
+
+test('resolves and caches local services while unmatched names use Siebel', () => {
+  const remoteCalls = [];
+  const remoteApplication = { GetService(name) { remoteCalls.push(name); return { remote: name }; } };
+  const loads = [];
+  const resolver = createLocalServiceResolver({
+    startingFolder: 'C:\\services\\Starting Service',
+    folders: new Map([
+      ['starting service', 'C:\\services\\Starting Service'],
+      ['called service', 'C:\\services\\Called Service']
+    ]),
+    remoteApplication,
+    globals: application => ({ TheApplication: () => application }),
+    loadService(folder, scope) {
+      loads.push(folder);
+      scope.InvokeMethod = function(methodName, _inputs, outputs) { outputs.result = `${methodName}:${folder}`; };
+    }
+  });
+  const startingScope = { InvokeMethod() {} };
+  resolver.registerStartingService(startingScope);
+
+  const local = resolver.application.GetService('CALLED SERVICE');
+  const outputs = {};
+  local.InvokeMethod('Fetch', {}, outputs);
+  assert.equal(outputs.result, 'Fetch:C:\\services\\Called Service');
+  assert.equal(resolver.application.GetService('Called Service'), local);
+  assert.deepEqual(loads, ['C:\\services\\Called Service']);
+  assert.equal(resolver.application.GetService('Starting Service').InvokeMethod instanceof Function, true);
+  assert.deepEqual(resolver.application.GetService('Remote Service'), { remote: 'Remote Service' });
+  assert.deepEqual(remoteCalls, ['Remote Service']);
 });
 
 test('strips ST eScript types while preserving breakpoint positions', () => {
