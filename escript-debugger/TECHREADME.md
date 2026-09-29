@@ -25,11 +25,17 @@ escript-debugger/
 │   ├── sync-bridge.mjs       Synchronous remote-object facade
 │   ├── constants.mjs         Global eScript constants
 │   ├── service-runtime.mjs   Service load-order planning
+│   ├── local-service-runtime.mjs
+│   │                          Local service resolution and isolation
+│   ├── service-scaffold.mjs  Service folder-name validation
 │   ├── type-stripper.mjs     ST eScript type processing
 │   └── reference-transformer.mjs
 │                              Call-by-reference transformation
 ├── service-implementation.escript
-├── assets/icon.png           VSIX and extension view icon
+├── assets/
+│   ├── icon.png              VSIX and extension view icon
+│   └── templates/service-scripts/
+│                              New-service starter scripts
 ├── typings/
 │   └── siebel-escript.d.ts   Ambient runtime type declarations
 ├── syntaxes/                 TextMate grammar
@@ -46,6 +52,8 @@ The extension consists of three runtime areas:
 3. A worker owns the Oracle Java Data Bean process and all Siebel objects.
 
 The runner exposes synchronous eScript calls while Oracle's Java Data Bean runs in a separate Java process. `sync-bridge.mjs` sends operations through a worker, which forwards them to `OracleSiebelBridge.java`; Siebel objects are represented by numeric handles.
+
+The worker and Java process exchange tab-separated packets through request and response files in a private temporary directory. Each side writes a complete packet to a sibling `.tmp` file and then atomically renames it to the watched path. This prevents the polling reader from observing a file between creation and completion. The Java bridge also validates the packet header and declared argument count before dispatch and reports malformed packets as protocol errors.
 
 PascalCase calls such as `GetBusObject` are forwarded by the proxy boundary to the corresponding Java Data Bean operations.
 
@@ -66,6 +74,8 @@ Connection data is Base64-encoded and passed to the launched process through `SI
 The `siebelEscript` view container is registered through `viewsContainers.activitybar` and uses `assets/sidebar-icon.svg` as its monochrome Activity Bar icon. The `siebelEscript.debugger` Webview view provides the compact debug interface inside it.
 
 `DebuggerSidebarProvider` and the `escript.openDebugger` command use the same Webview initialization. The interface therefore works both in the sidebar and in a separate panel. Local resources are restricted to the `assets` directory, while a nonce-based Content Security Policy protects scripts and styles.
+
+For Service mode, `debugger-ui.ts` enumerates the directories beside the selected service whenever the Webview is rendered. Checking **Debug local sibling services** reveals this precomputed, HTML-escaped list and distinguishes the starting service from the other locally resolvable services. Selecting a different script rerenders the Webview and refreshes the discovery result.
 
 ## Standalone runtime
 
@@ -92,6 +102,14 @@ InvokeMethod(methodName, SERV_INPUTS, SERV_OUTPUTS);
 the runner iterates over `GetFirstProperty` and `GetNextProperty`. Results are passed through a temporary JSON file. The extension host watches this file, sends the outputs to the Webview, and then removes it.
 
 The bundled implementation denies methods by default. User method files loaded later must override `Service_PreCanInvokeMethod` and `Service_PreInvokeMethod` as appropriate. The `canInvoke` argument must remain an `&` reference parameter so the generated call-by-reference bridge writes the decision back into `InvokeMethod`. `ContinueOperation` delegates to the next stage; `CancelOperation` marks the current stage as handled.
+
+When `debugLocalServices` is enabled, `local-service-runtime.mjs` indexes the directories beside the starting service folder by case-insensitive folder name. The Application facade intercepts `GetService`: matching folders are built lazily with `serviceScriptPlan`, cached, and returned as synchronous local service proxies; unmatched names are forwarded to the remote Java Data Bean Application. Each local service runs in a separate `vm` context so globals and hook overrides remain isolated. The starting service is registered under its own folder name, allowing local calls back to it and circular service references without rebuilding contexts.
+
+## Service scaffolding command
+
+`escript.addSiebelService` is contributed to `explorer/context` when `explorerResourceIsFolder` is true. The selected Explorer resource is the parent directory. The command asks for a service name, validates it through `service-scaffold.mjs`, rejects an existing target, and copies `assets/templates/service-scripts` recursively through `vscode.workspace.fs`. The Explorer is refreshed only after a successful copy.
+
+Validation rejects empty names, `.` and `..`, path separators, control characters, Windows-invalid characters and reserved device names, and names ending in a period or space. The template directory is explicitly included in the package manifest so it is available from `ExtensionContext.extensionUri` in an installed VSIX.
 
 ## ST eScript type processing
 
@@ -168,6 +186,8 @@ The current test suite covers, among other things:
 - cursor-mode conversion for the Java Data Bean
 - matching and differing `Siebel.jar` hashes
 - service load order
+- sibling-service discovery, caching, local invocation, and remote fallback
+- Explorer command registration, service-name validation, and packaged starter templates
 - position-preserving type processing
 - protection of strings, comments, and regular expressions
 - reference parameters and write-back behavior
@@ -187,7 +207,7 @@ Create an installable extension with `@vscode/vsce`:
 npx --yes @vscode/vsce package --no-dependencies --allow-missing-repository
 ```
 
-`--no-dependencies` is intentional because the extension has no production npm dependencies. The resulting package for this release is `siebel-escript-dbger-0.2.0.vsix`. Oracle JARs are never included.
+`--no-dependencies` is intentional because the extension has no production npm dependencies. The resulting package for this release is `siebel-escript-dbger-0.3.0.vsix`. Oracle JARs are never included.
 
 ## Changing the general service implementation
 

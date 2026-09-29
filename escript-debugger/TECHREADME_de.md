@@ -25,11 +25,17 @@ escript-debugger/
 │   ├── sync-bridge.mjs       synchrone Remote-Objekt-Fassade
 │   ├── constants.mjs         globale eScript-Konstanten
 │   ├── service-runtime.mjs   Planung der Service-Ladereihenfolge
+│   ├── local-service-runtime.mjs
+│   │                          lokale Service-Auflösung und Isolation
+│   ├── service-scaffold.mjs  Validierung von Service-Ordnernamen
 │   ├── type-stripper.mjs     Verarbeitung von ST-eScript-Typen
 │   └── reference-transformer.mjs
 │                              Call-by-reference-Transformation
 ├── service-implementation.escript
-├── assets/icon.png           Icon für VSIX und Extension-Ansicht
+├── assets/
+│   ├── icon.png              Icon für VSIX und Extension-Ansicht
+│   └── templates/service-scripts/
+│                              Startskripte für neue Services
 ├── typings/
 │   └── siebel-escript.d.ts   Ambient Runtime-Typdefinitionen
 ├── syntaxes/                 TextMate-Grammatik
@@ -46,6 +52,8 @@ Die Extension besteht aus drei Laufzeitbereichen:
 3. Ein Worker besitzt den Oracle-Java-Data-Bean-Prozess und sämtliche Siebel-Objekte.
 
 Der Runner stellt eScript-Aufrufe synchron bereit, während Oracles Java Data Bean in einem separaten Java-Prozess läuft. `sync-bridge.mjs` sendet Operationen an den Worker. Dieser übergibt sie über eine dateibasierte Request-/Response-Schnittstelle an `OracleSiebelBridge`; Siebel-Objekte werden über numerische Handles als synchrone Proxies dargestellt.
+
+Worker und Java-Prozess tauschen tabulatorgetrennte Pakete über Request- und Response-Dateien in einem privaten temporären Verzeichnis aus. Beide Seiten schreiben ein vollständiges Paket zunächst in eine benachbarte `.tmp`-Datei und benennen diese anschließend atomar auf den überwachten Pfad um. Dadurch kann der abfragende Leser keine Datei zwischen ihrer Erstellung und Fertigstellung beobachten. Die Java-Bridge validiert außerdem den Paket-Header und die deklarierte Argumentanzahl vor der Ausführung und meldet ungültige Pakete als Protokollfehler.
 
 PascalCase-Aufrufe wie `GetBusObject` werden an der Proxy-Grenze an die entsprechenden Operationen der Java Data Bean weitergegeben.
 
@@ -66,6 +74,8 @@ Die Verbindungsdaten werden für den gestarteten Prozess Base64-kodiert über `S
 Der View-Container `siebelEscript` wird über `viewsContainers.activitybar` registriert und verwendet `assets/sidebar-icon.svg` als monochromes Activity-Bar-Symbol. Darin stellt der Webview-View `siebelEscript.debugger` die kompakte Debug-Oberfläche bereit.
 
 `DebuggerSidebarProvider` und der Befehl `escript.openDebugger` verwenden dieselbe Webview-Initialisierung. Die Oberfläche funktioniert daher sowohl in der Seitenleiste als auch als separates Panel. Lokale Ressourcen sind auf den `assets`-Ordner beschränkt; Skripte und Styles werden durch eine Nonce-basierte Content Security Policy geschützt.
+
+Im Service-Modus ermittelt `debugger-ui.ts` bei jedem Rendern der Webview die Verzeichnisse neben dem ausgewählten Service. Das Aktivieren von **Debug local sibling services** blendet diese vorab berechnete und HTML-maskierte Liste ein und unterscheidet den startenden Service von den anderen lokal auflösbaren Services. Nach der Auswahl eines anderen Skripts wird die Webview neu gerendert und das Ermittlungsergebnis aktualisiert.
 
 ## Standalone-Laufzeit
 
@@ -92,6 +102,14 @@ InvokeMethod(methodName, SERV_INPUTS, SERV_OUTPUTS);
 iteriert der Runner über `GetFirstProperty` und `GetNextProperty`. Das Ergebnis wird als temporäre JSON-Datei übergeben. Der Extension-Host überwacht diese Datei, überträgt die Outputs an die Webview und entfernt sie anschließend.
 
 Die mitgelieferte Implementierung lehnt Methoden standardmäßig ab. Später geladene Methoden-Dateien des Benutzers müssen `Service_PreCanInvokeMethod` und `Service_PreInvokeMethod` passend überschreiben. Das Argument `canInvoke` muss ein `&`-Referenzparameter bleiben, damit die generierte Call-by-Reference-Brücke die Entscheidung an `InvokeMethod` zurückschreibt. `ContinueOperation` übergibt an die nächste Stufe; `CancelOperation` kennzeichnet die aktuelle Stufe als behandelt.
+
+Ist `debugLocalServices` aktiviert, indiziert `local-service-runtime.mjs` die Verzeichnisse neben dem Ordner des startenden Services anhand ihrer Namen ohne Beachtung der Groß- und Kleinschreibung. Die Application-Fassade fängt `GetService` ab: Passende Ordner werden mit `serviceScriptPlan` bei der ersten Verwendung aufgebaut, zwischengespeichert und als synchrone lokale Service-Proxies zurückgegeben; nicht passende Namen werden an die entfernte Application der Java Data Bean weitergeleitet. Jeder lokale Service läuft in einem eigenen `vm`-Kontext, damit globale Variablen und Hook-Überschreibungen isoliert bleiben. Der startende Service wird unter seinem eigenen Ordnernamen registriert, sodass lokale Rück- und zyklische Service-Aufrufe keine Kontexte erneut aufbauen.
+
+## Befehl zum Erstellen eines Services
+
+`escript.addSiebelService` wird unter `explorer/context` bereitgestellt, wenn `explorerResourceIsFolder` wahr ist. Die ausgewählte Explorer-Ressource ist das Zielverzeichnis. Der Befehl fragt nach einem Service-Namen, validiert ihn über `service-scaffold.mjs`, lehnt ein vorhandenes Ziel ab und kopiert `assets/templates/service-scripts` rekursiv mit `vscode.workspace.fs`. Der Explorer wird erst nach erfolgreichem Kopieren aktualisiert.
+
+Die Validierung lehnt leere Namen, `.` und `..`, Pfadtrenner, Steuerzeichen, unter Windows ungültige Zeichen und reservierte Gerätenamen sowie Namen mit abschließendem Punkt oder Leerzeichen ab. Das Template-Verzeichnis ist ausdrücklich im Paketmanifest enthalten und steht dadurch in einer installierten VSIX relativ zu `ExtensionContext.extensionUri` zur Verfügung.
 
 ## ST-eScript-Typverarbeitung
 
@@ -168,6 +186,8 @@ Die Tests prüfen derzeit unter anderem:
 - Konvertierung der Cursor-Modi für die Java Data Bean
 - übereinstimmende und abweichende `Siebel.jar`-Hashes
 - Service-Ladereihenfolge
+- Ermittlung von Nachbar-Services, Caching, lokale Aufrufe und Remote-Fallback
+- Explorer-Befehlsregistrierung, Service-Namensvalidierung und paketierte Startskripte
 - positionsstabile Typverarbeitung
 - Schutz von Strings, Kommentaren und regulären Ausdrücken
 - Referenzparameter und Rückschreiben
@@ -187,7 +207,7 @@ Eine installierbare Extension wird mit `@vscode/vsce` erstellt:
 npx --yes @vscode/vsce package --no-dependencies --allow-missing-repository
 ```
 
-`--no-dependencies` ist vorgesehen, weil die Extension keine produktiven npm-Abhängigkeiten besitzt. Das Paket dieser Version heißt `siebel-escript-dbger-0.2.0.vsix`. Oracle-JARs sind darin nicht enthalten.
+`--no-dependencies` ist vorgesehen, weil die Extension keine produktiven npm-Abhängigkeiten besitzt. Das Paket dieser Version heißt `siebel-escript-dbger-0.3.0.vsix`. Oracle-JARs sind darin nicht enthalten.
 
 ## Änderungen an der allgemeinen Service-Implementierung
 

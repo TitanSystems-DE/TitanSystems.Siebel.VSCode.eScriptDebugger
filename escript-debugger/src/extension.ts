@@ -4,6 +4,7 @@ import * as path from 'node:path';
 import * as vscode from 'vscode';
 import { inspectSiebelJar } from '../runtime/jar-compatibility.mjs';
 import { OracleSiebelClient } from '../runtime/oracle-client.mjs';
+import { validateServiceName } from '../runtime/service-scaffold.mjs';
 import { DebuggerSidebarProvider, openDebuggerUi, type ServiceLaunchConfig, type UiActions } from './debugger-ui.js';
 import { ConnectionProfile, ProfileStore } from './profiles.js';
 
@@ -23,6 +24,7 @@ export function activate(context: vscode.ExtensionContext): void {
   context.subscriptions.push(
     vscode.commands.registerCommand('escript.connections', () => manageConnections(store, refresh)),
     vscode.commands.registerCommand('escript.installTypings', () => installTypings(context)),
+    vscode.commands.registerCommand('escript.addSiebelService', (resource?: vscode.Uri) => addSiebelService(context, resource)),
     vscode.commands.registerCommand('escript.openDebugger', () => openDebuggerUi(context, store, uiActions)),
     vscode.window.registerWebviewViewProvider('siebelEscript.debugger', new DebuggerSidebarProvider(context, store, uiActions), { webviewOptions: { retainContextWhenHidden: true } }),
     vscode.commands.registerCommand('escript.debugFile', () => launchCurrent(store, context, false)),
@@ -32,6 +34,38 @@ export function activate(context: vscode.ExtensionContext): void {
     }),
     vscode.workspace.onDidChangeConfiguration(e => { if (e.affectsConfiguration('escriptDebugger.activeConnection')) refresh(); })
   );
+}
+
+async function addSiebelService(context: vscode.ExtensionContext, parent?: vscode.Uri): Promise<void> {
+  if (!parent) { void vscode.window.showErrorMessage('Select a folder in the Explorer before adding a Siebel service.'); return; }
+  let parentStat: vscode.FileStat;
+  try { parentStat = await vscode.workspace.fs.stat(parent); }
+  catch { void vscode.window.showErrorMessage('The selected Explorer folder is no longer available.'); return; }
+  if ((parentStat.type & vscode.FileType.Directory) === 0) { void vscode.window.showErrorMessage('Select a folder in the Explorer before adding a Siebel service.'); return; }
+
+  const name = await vscode.window.showInputBox({
+    title: 'Add Siebel Service',
+    prompt: 'Enter the business service name. A folder with this name will be created.',
+    placeHolder: 'My Business Service',
+    validateInput: validateServiceName
+  });
+  if (name === undefined) return;
+  const serviceName = name.trim();
+  const target = vscode.Uri.joinPath(parent, serviceName);
+  try {
+    await vscode.workspace.fs.stat(target);
+    void vscode.window.showErrorMessage(`A file or folder named '${serviceName}' already exists.`);
+    return;
+  } catch { /* The target must not exist before copying the template. */ }
+
+  const template = vscode.Uri.joinPath(context.extensionUri, 'assets', 'templates', 'service-scripts');
+  try {
+    await vscode.workspace.fs.copy(template, target, { overwrite: false });
+    await vscode.commands.executeCommand('workbench.files.action.refreshFilesExplorer');
+    void vscode.window.showInformationMessage(`Siebel service '${serviceName}' was created.`);
+  } catch (error) {
+    void vscode.window.showErrorMessage(`Could not create Siebel service '${serviceName}': ${error instanceof Error ? error.message : String(error)}`);
+  }
 }
 
 async function installTypings(context: vscode.ExtensionContext): Promise<void> {

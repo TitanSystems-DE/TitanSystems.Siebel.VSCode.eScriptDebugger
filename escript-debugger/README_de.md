@@ -58,7 +58,7 @@ Im Standalone-Modus werden die aktive Datei und das gewählte Verbindungsprofil 
 
 ![Siebel eScript Debugger im Service-Modus mit InvokeMethod](docs/screenshots/service.png)
 
-Im Service-Modus ergänzt die Startzentrale die Auswahl des Einstiegspunkts sowie die Eingabe von Input-Properties. Nach einem `InvokeMethod`-Aufruf erscheinen die aus `SERV_OUTPUTS` gelesenen Werte im Bereich **Output properties**.
+Im Service-Modus ergänzt die Startzentrale die Auswahl des Einstiegspunkts, die Eingabe von Input-Properties und die Option **Debug local sibling services**. Sobald diese Option aktiviert ist, erscheint die Liste **Found local services**. Nach einem `InvokeMethod`-Aufruf werden die Werte aus `SERV_OUTPUTS` unter **Output properties** angezeigt.
 
 ## Standalone-Modus
 
@@ -85,6 +85,78 @@ oBO.Release();
 ## Service-Modus
 
 Im Service-Modus gelten alle `.escript`-Dateien im Ordner des ausgewählten Skripts als Bestandteil desselben Services. Sie teilen sich globale Variablen und Funktionen.
+
+Der Name des Ordners des ausgewählten Skripts ist der Name des startenden Business Service. Mit **Debug local sibling services** werden zusätzlich alle Nachbarordner als Business Services interpretiert. Ruft ein Skript `TheApplication().GetService("Service Name")` auf, wird ein passender Nachbarordner nach denselben Laderegeln lokal aufgebaut und anstelle des Services aus der Siebel Java Data Bean zurückgegeben. Der Ordnervergleich unterscheidet nicht zwischen Groß- und Kleinschreibung. Existiert kein passender Ordner, wird der Service weiterhin über Siebel aufgelöst.
+
+Wenn die Option aktiviert ist, listet die Debugger-Oberfläche alle gefundenen Ordner auf und kennzeichnet den ausgewählten Ordner als **Starting service**. Die anderen Ordner tragen die Kennzeichnung **Local service**. Diese Liste zeigt die Namen, die während der Sitzung lokal aufgelöst werden können; sie bedeutet nicht, dass alle aufgeführten Services bereits geladen wurden.
+
+![Service-Modus mit aktivierter Ermittlung lokaler Nachbar-Services](docs/screenshots/local-services.png)
+
+*Der ausgewählte Ordner ist der startende Service. Passende Nachbarordner stehen für lokale `GetService`-Aufrufe zur Verfügung.*
+
+Lokale Services werden bei der ersten Verwendung geladen und für die restliche Debug-Sitzung zwischengespeichert. Jeder Service besitzt eigene globale Variablen und Service-Hooks; PropertySets können wie gewohnt zwischen aufrufendem und aufgerufenem Service übergeben werden. Breakpoints funktionieren auch in den Skripten lokal geladener Services.
+
+Beispielstruktur:
+
+```text
+services/
+├── Order Service/       # ausgewähltes Skript; startender Service
+│   └── Submit.escript
+├── Pricing Service/     # lokal durch GetService("Pricing Service") aufgelöst
+│   └── Calculate.escript
+└── Shared Service/
+    └── Execute.escript
+```
+
+### Service-Ordner erstellen
+
+Klicken Sie im VS-Code-Explorer mit der rechten Maustaste auf einen Ordner und wählen Sie **Add Siebel Service**. Geben Sie einen gültigen Business-Service-Namen ein und bestätigen Sie. Die Extension erstellt darin einen Unterordner mit diesem Namen und kopiert die mitgelieferten Startskripte hinein:
+
+![Add Siebel Service im Kontextmenü eines Explorer-Ordners](docs/screenshots/add-siebel-service-menu.png)
+
+*Der Befehl ist verfügbar, wenn im Explorer ein Ordner ausgewählt ist.*
+
+![Eingabe des Business-Service-Namens](docs/screenshots/add-siebel-service-dialog.png)
+
+*Der neue Service wird als Unterordner des ausgewählten Explorer-Ordners erstellt.*
+
+- `(declerations).escript`
+- `Service_PreCanInvokeMethod.escript`
+- `Service_PreInvokeMethod.escript`
+- `Service_InvokeMethod.escript`
+
+Der Befehl lehnt Pfadtrenner, unter Windows reservierte Namen, ungültige Dateinamenzeichen, abschließende Punkte oder Leerzeichen sowie bereits vorhandene Namen im ausgewählten Ordner ab.
+
+Empfohlener Ablauf:
+
+1. Klicken Sie im Explorer mit der rechten Maustaste auf den übergeordneten Ordner, der die Business Services enthält.
+2. Wählen Sie **Add Siebel Service**.
+3. Geben Sie den Service-Namen genauso ein, wie Skripte ihn an `GetService` übergeben werden, und bestätigen Sie.
+4. Bearbeiten Sie die erzeugten Hook-Dateien und implementieren Sie die Service-Methoden.
+5. Wählen Sie eine `.escript`-Datei im Ordner des startenden Services aus und öffnen Sie die Debugger-Startzentrale.
+6. Wählen Sie **Service**, aktivieren Sie **Debug local sibling services** und prüfen Sie die Namen unter **Found local services**.
+7. Starten Sie das Debugging über `InvokeMethod` oder `Direct`.
+
+Der Befehl überschreibt niemals einen vorhandenen Service-Ordner. Schlägt das Erstellen oder Kopieren fehl, wird eine Fehlermeldung angezeigt; vorhandene Dateien bleiben unverändert.
+
+### Anderen lokalen Service aufrufen
+
+Im startenden Service und in jedem lokal geladenen Service wird die normale Siebel-API verwendet:
+
+```js
+var service = TheApplication().GetService("Pricing Service");
+var inputs = TheApplication().NewPropertySet();
+var outputs = TheApplication().NewPropertySet();
+service.InvokeMethod("Calculate", inputs, outputs);
+```
+
+Die Auflösung erfolgt nach diesen Regeln:
+
+1. Ist **Debug local sibling services** deaktiviert, verwendet `GetService` immer Siebel.
+2. Ist die Option aktiviert und trägt ein Nachbarordner den angeforderten Namen, wird dieser Ordner bei der ersten Verwendung lokal aufgebaut und anschließend zwischengespeichert.
+3. Gibt es keinen passenden Nachbarordner, wird der Aufruf automatisch an Siebel weitergeleitet.
+
+Der Ordnervergleich unterscheidet nicht zwischen Groß- und Kleinschreibung. Eine einheitliche Schreibweise im Code und im Explorer erleichtert jedoch das Verständnis des Projekts. Jeder lokale Service besitzt eigene globale Variablen und Hook-Implementierungen, sodass Funktionen verschiedener Services einander nicht überschreiben.
 
 ### Aufbau der Service-Runtime
 

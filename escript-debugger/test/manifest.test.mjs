@@ -10,3 +10,11 @@ test('declares editor breakpoint support for eScript documents', () => {
     'package.json must contribute breakpoints for the escript language'
   );
 });
+
+test('contributes the Add Siebel Service Explorer command and packages its templates', () => {
+  assert.ok(manifest.contributes.commands?.some(contribution => contribution.command === 'escript.addSiebelService'));
+  assert.ok(manifest.contributes.menus?.['explorer/context']?.some(contribution =>
+    contribution.command === 'escript.addSiebelService' && contribution.when === 'explorerResourceIsFolder'
+  ));
+  assert.ok(manifest.files.includes('assets/templates/service-scripts/*.escript'));
+});

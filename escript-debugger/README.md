@@ -57,7 +57,7 @@ Standalone mode shows the active file and selected connection profile. The scrip
 
 ![Siebel eScript Debugger in Service mode with InvokeMethod](docs/screenshots/service.png)
 
-Service mode adds entry-point selection and input properties. After an `InvokeMethod` call, values read from `SERV_OUTPUTS` appear under **Output properties**.
+Service mode adds entry-point selection, input properties, and the **Debug local sibling services** option. When that option is checked, the **Found local services** list appears immediately. After an `InvokeMethod` call, values read from `SERV_OUTPUTS` appear under **Output properties**.
 
 ## Standalone mode
 
@@ -84,6 +84,78 @@ oBO.Release();
 ## Service mode
 
 In Service mode, every `.escript` file in the selected script's directory is part of the same service. All files share global variables and functions.
+
+The selected script's folder name is the starting business-service name. Enable **Debug local sibling services** to also interpret every sibling folder as a business service. When a script calls `TheApplication().GetService("Service Name")`, a matching sibling folder is built locally with the same loading rules and returned instead of the Siebel Java Data Bean service. Folder matching is case-insensitive. If no matching folder exists, `GetService` continues to resolve the service through Siebel.
+
+When the option is checked, the debugger panel lists every discovered folder and labels the selected folder as **Starting service**. Other folders are labeled **Local service**. This is the set of names that can be resolved locally during the session; it does not mean that every listed service has already been loaded.
+
+![Service mode with local sibling-service discovery enabled](docs/screenshots/local-services.png)
+
+*The selected folder is the starting service. Matching sibling folders are available for local `GetService` calls.*
+
+Local services are loaded on first use and cached for the rest of the debug session. Each service has its own globals and service hooks, while PropertySets can be passed normally between the calling and called services. Breakpoints work in the scripts of locally loaded services.
+
+Example layout:
+
+```text
+services/
+├── Order Service/       # selected script; starting service
+│   └── Submit.escript
+├── Pricing Service/     # resolved locally by GetService("Pricing Service")
+│   └── Calculate.escript
+└── Shared Service/
+    └── Execute.escript
+```
+
+### Creating a service folder
+
+Right-click a folder in the VS Code Explorer and select **Add Siebel Service**. Enter a valid business-service name and confirm. The extension creates a child folder with that name and copies the bundled starter scripts into it:
+
+![Add Siebel Service in the Explorer folder context menu](docs/screenshots/add-siebel-service-menu.png)
+
+*The command is available when a folder is selected in the Explorer.*
+
+![Business-service name prompt](docs/screenshots/add-siebel-service-dialog.png)
+
+*The new service is created as a child of the selected Explorer folder.*
+
+- `(declerations).escript`
+- `Service_PreCanInvokeMethod.escript`
+- `Service_PreInvokeMethod.escript`
+- `Service_InvokeMethod.escript`
+
+The command rejects path separators, Windows-reserved names, invalid filename characters, trailing periods or spaces, and names that already exist in the selected folder.
+
+Recommended workflow:
+
+1. In the Explorer, right-click the parent folder that contains your business services.
+2. Select **Add Siebel Service**.
+3. Enter the service name exactly as scripts will pass it to `GetService` and confirm.
+4. Edit the generated hook files to implement the service methods.
+5. Select any `.escript` file in the starting service folder and open the debugger launcher.
+6. Select **Service**, check **Debug local sibling services**, and confirm that the expected names appear under **Found local services**.
+7. Start debugging with either the `InvokeMethod` or `Direct` entry point.
+
+The command never overwrites an existing service folder. If creation or copying fails, an error is shown and existing files are left unchanged.
+
+### Calling another local service
+
+Use the normal Siebel API in the starting service or any locally loaded service:
+
+```js
+var service = TheApplication().GetService("Pricing Service");
+var inputs = TheApplication().NewPropertySet();
+var outputs = TheApplication().NewPropertySet();
+service.InvokeMethod("Calculate", inputs, outputs);
+```
+
+Resolution works as follows:
+
+1. If **Debug local sibling services** is disabled, `GetService` always uses Siebel.
+2. If it is enabled and a sibling folder has the requested name, that folder is built locally on first use and then cached.
+3. If no sibling folder matches, the request falls back to Siebel automatically.
+
+Folder matching is case-insensitive, but using the same spelling in code and in the Explorer keeps projects easier to understand. Every local service has its own globals and hook implementations, so functions from two services do not overwrite one another.
 
 ### Building the service runtime
 

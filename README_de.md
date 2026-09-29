@@ -15,6 +15,14 @@ Version 0.2.0 vergleicht die konfigurierte `Siebel.jar` mit dem SHA-256-Hash der
 
 Unter `escriptDebugger.siebelJar` wird der absolute Pfad zur `Siebel.jar` eingetragen. Alle benötigten Begleit-JARs müssen im selben Verzeichnis liegen. Ist `java` nicht über `PATH` erreichbar, wird zusätzlich `escriptDebugger.javaPath` konfiguriert.
 
+## Neuerungen in Version 0.3.0
+
+- Mehrere lokal gespeicherte Business Services können in derselben Service-Modus-Sitzung debuggt werden. Der Ordner des ausgewählten Skripts ist der startende Service; seine Nachbarordner sind über `TheApplication().GetService()` verfügbar.
+- Die Debugger-Oberfläche zeigt vor dem Start alle lokal verfügbaren Services an. Aufrufe ohne passenden lokalen Ordner werden weiterhin an Siebel geleitet.
+- Über **Add Siebel Service** im Kontextmenü eines Explorer-Ordners wird ein neuer Service-Ordner aus den mitgelieferten Startskripten erstellt.
+
+Das [Kapitel zum Service-Modus](escript-debugger/README_de.md#service-modus) beschreibt die benötigte Ordnerstruktur und den vollständigen Ablauf.
+
 ## Dokumentation
 
 - [Benutzerhandbuch](escript-debugger/README_de.md)
@@ -31,7 +39,7 @@ npx --yes @vscode/vsce package --no-dependencies --allow-missing-repository
 
 Die erzeugte VSIX-Datei enthält keine Oracle-JAR-Dateien.
 
-Das Release-Archiv heißt `siebel-escript-dbger-0.2.0.vsix`.
+Das Release-Archiv heißt `siebel-escript-dbger-0.3.0.vsix`.
 
 ## Lizenz
 

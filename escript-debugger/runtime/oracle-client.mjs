@@ -1,11 +1,17 @@
 import { spawn } from 'node:child_process';
-import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { delimiter, dirname, join } from 'node:path';
 
 const b64 = value => Buffer.from(String(value), 'utf8').toString('base64');
 const unb64 = value => Buffer.from(value, 'base64').toString('utf8');
 export const normalizeConnectionString = url => url.replace(/^siebel:\/\//i, 'siebel.tcpip.none.none://');
+
+export function publishRequest(requestFile, line) {
+  const temporary = `${requestFile}.tmp`;
+  writeFileSync(temporary, line, 'utf8');
+  renameSync(temporary, requestFile);
+}
 
 export class OracleSiebelClient {
   constructor({ javaPath = 'java', siebelJar, siebelJars, bridgeSource, requestTimeout = 30000 }) {
@@ -48,7 +54,9 @@ export class OracleSiebelClient {
   }
   request(command, target = 0, method = '', args = []) {
     const line = [command, target, b64(method), args.length, ...args.map(value => this.#encode(value))].join('\t') + '\n';
-    writeFileSync(this.requestFile, line, 'utf8');
+    // Publish only complete packets. The Java process polls for requestFile,
+    // so writing directly to that path lets it observe an empty/partial line.
+    publishRequest(this.requestFile, line);
     const deadline = Date.now() + this.timeout;
     while (!existsSync(this.responseFile)) {
       if (this.processError) throw this.processError;

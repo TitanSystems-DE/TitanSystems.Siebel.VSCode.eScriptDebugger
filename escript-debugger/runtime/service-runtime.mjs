@@ -18,3 +18,10 @@ export function directMethodName(filename) {
   // normalize the filename because it maps 1:1 to the Direct entry point.
   return extension ? basename.slice(0, -extension.length) : basename;
 }
+
+export function localServiceFolders(serviceFolder, entries) {
+  const parent = path.dirname(serviceFolder);
+  return new Map(entries
+    .filter(entry => entry.isDirectory())
+    .map(entry => [entry.name.toLocaleLowerCase('en'), path.join(parent, entry.name)]));
+}
