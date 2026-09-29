@@ -2,7 +2,7 @@
   "name": "siebel-escript-dbger",
   "displayName": "Siebel eScript-Debugger",
   "description": "Debug and execute Siebel eScript files through Oracle's Siebel Java Data Bean.",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "license": "SEE LICENSE IN LICENSE",
   "publisher": "titansystems-de",
   "icon": "assets/icon.png",
