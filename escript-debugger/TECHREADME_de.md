@@ -28,12 +28,15 @@ escript-debugger/
 │   ├── local-service-runtime.mjs
 │   │                          lokale Service-Auflösung und Isolation
 │   ├── service-scaffold.mjs  Validierung von Service-Ordnernamen
+│   ├── workspace-runtime.mjs Validierung und Rendering des Workspaces
 │   ├── type-stripper.mjs     Verarbeitung von ST-eScript-Typen
 │   └── reference-transformer.mjs
 │                              Call-by-reference-Transformation
 ├── service-implementation.escript
 ├── assets/
 │   ├── icon.png              Icon für VSIX und Extension-Ansicht
+│   ├── templates/ws-change.escript
+│   │                          Startskript zum Öffnen und Aktivieren des Workspaces
 │   └── templates/service-scripts/
 │                              Startskripte für neue Services
 ├── typings/
@@ -63,11 +66,37 @@ Der Runner führt eScript bewusst als klassisches, nicht-striktes Skript aus, da
 
 Der Debug-Typ `escript` wird durch einen `DebugConfigurationProvider` auf eine Node-Launch-Konfiguration umgesetzt. Der integrierte JavaScript-Debugger startet `dist/runtime/runner.mjs`.
 
-Der Runner verwendet immer das integrierte Terminal von VS Code. `Clib.WriteLn` und `Clib.puts` schreiben synchron auf den Dateideskriptor der Standardausgabe und umgehen damit das Abfangen von Konsolenaufrufen sowie die Stream-Pufferung durch den Debugger. Ihre Ausgabe erscheint dadurch sowohl beim Debuggen als auch bei „Run without debugging“ live im Terminal. Die Debugkonsole wird für eScript-Ausgaben nicht geöffnet.
+Die erzeugte Node-Launch-Konfiguration verwendet `console: 'internalConsole'` und `internalConsoleOptions: 'openOnSessionStart'`. `Clib.WriteLn` und `Clib.puts` schreiben synchron auf die Standardausgabe; VS Code zeigt diesen Stream beim Debuggen und bei „Run without debugging“ in der Debugkonsole an. Es wird kein integriertes Terminal erzeugt. Dadurch gibt VS Code das Setzen der Umgebungsvariablen nicht als PowerShell-Befehlszeile aus.
 
 Jede Quelldatei wird über `vm.Script` mit einer eingebetteten Source Map ausgeführt. Jede erzeugte Laufzeitzeile verweist auf dieselbe Zeile der ursprünglichen `.escript`-Datei. Dadurch kann VS Code Haltepunkte schon vor dem dynamischen Laden eines Skripts binden und in der Aufrufliste den Originalquelltext anzeigen. Beim Anhalten stehen lokale und globale Werte in den normalen Ansichten „Variablen“, „Überwachen“ und „Debugkonsole“ zur Verfügung.
 
-Die Verbindungsdaten werden für den gestarteten Prozess Base64-kodiert über `SIEBEL_ESCRIPT_CONNECTION` übertragen und unmittelbar nach dem Einlesen aus der Prozessumgebung entfernt. Das Kennwort wird im Extension-Host ausschließlich über `ExtensionContext.secrets` gespeichert.
+Die Verbindungsdaten einschließlich des verpflichtenden Start-Workspaces werden für den gestarteten Prozess Base64-kodiert über `SIEBEL_ESCRIPT_CONNECTION` übertragen und unmittelbar nach dem Einlesen aus der Prozessumgebung entfernt. Base64 ist eine Transportkodierung und keine Verschlüsselung. Das Kennwort wird im Extension-Host ausschließlich über `ExtensionContext.secrets` persistiert; nicht geheime Profildaten einschließlich des Workspace-Namens liegen in `ExtensionContext.globalState`. Durch die interne Debugkonsole wird der kodierte Payload nicht in einen Terminalverlauf geschrieben.
+
+## Lebenszyklus von Verbindung und Workspace
+
+Der Begriff *Workspace* bezeichnet in der Runtime einen Siebel Repository Workspace. Er ist nicht mit `vscode.WorkspaceFolder` identisch. Letzterer bestimmt lediglich den Projekt- und Quelldateikontext der Debug-Session; `ConnectionProfile.workspace` bestimmt dagegen den serverseitigen Repository-Kontext, in dem eScript ausgeführt wird.
+
+`ProfileStore` persistiert Profile unter `escriptDebugger.connections`. Jedes Profil besitzt `{ name, url, username, language, workspace? }`; das Kennwort liegt unter einem separaten SecretStorage-Schlüssel. Die Einstellung `escriptDebugger.activeConnection` enthält den Namen des aktiven Profils. Die Statusleiste kombiniert ihn mit dem aktuellen Workspace zu `Siebel: <Verbindung> (<Workspace>)`. Auch die Webview verwendet `<Verbindung> (<Workspace>)` und blendet URL und Benutzername bewusst aus.
+
+Die Workspace-Auflösung erfolgt in `resolveLaunch`, bevor eine Debug-Konfiguration zurückgegeben wird:
+
+1. Ein durch die Startzentrale oder `launch.json` geliefertes `config.connection` hat Vorrang; andernfalls gilt `escriptDebugger.activeConnection`.
+2. Enthält das Profil einen nicht leeren `workspace`, wird dieser als Start-Workspace verwendet.
+3. Andernfalls fordert ein Eingabefeld einen nicht leeren Namen an. Dieser Fallback wird nur in die In-Memory-Kopie des Startprofils übernommen und nicht persistiert. Dauerhaftes Speichern erfolgt bewusst nur über **Set workspace for active connection**.
+4. Das aufgelöste Profil und das Kennwort werden in den Start-Payload serialisiert. Der Runner kann daher nie ohne einen nicht leeren Workspace erreicht werden.
+
+Die Auswahl eines Profils in der Webview aktualisiert beim Start zugleich die aktive Verbindung. Beim Workspace-Wechsel speichert die Verbindungsverwaltung eine neue Kopie des aktiven Profils, ohne ein Kennwort an `ProfileStore.save` zu übergeben; der vorhandene SecretStorage-Wert bleibt deshalb unverändert. Danach wird die Statusleiste aktualisiert. **Test connection** führt derzeit nur Login, Abfrage der Serverversion und Logoff aus; die Workspace-Startsequenz gehört nicht zu diesem Test.
+
+Beim Prozessstart liest und entfernt `runner.mjs` zunächst `SIEBEL_ESCRIPT_CONNECTION`, initialisiert die Java-Data-Bean-Bridge und aktiviert anschließend den Workspace, bevor Benutzerquelltext geladen wird:
+
+1. `workspace-runtime.mjs` trimmt und validiert den Workspace-Namen.
+2. Der Name wird in `assets/templates/ws-change.escript` eingesetzt. Eine Escaping-Logik auf Basis von `JSON.stringify` schützt das JavaScript-Stringliteral und verhindert, dass ein Workspace-Name eScript-Quelltext einschleusen kann.
+3. Das Startskript fragt das Business Component `Repository Workspace` mit `AllView` und einem exakten Namensausdruck ab.
+4. `FirstRecord` muss den Workspace finden; andernfalls wirft das Startskript einen Fehler.
+5. Danach werden nacheinander `OpenWS` und `PreviewWS` aufgerufen.
+6. Erst nach erfolgreichem Abschluss dieser Sequenz startet der Runner den Standalone-Quelltext oder den Service-Einstiegspunkt.
+
+Fehler bei Validierung, Suche, `OpenWS` oder `PreviewWS` laufen über den normalen Fehlerpfad des Runners, setzen einen von null verschiedenen Exit-Code und verhindern die Ausführung von Benutzerquelltext. Die Sequenz wird bei jedem Start wiederholt, damit ihre Korrektheit nicht vom Zustand einer vorherigen Siebel-Sitzung abhängt.
 
 ## Webview und Activity Bar
 
@@ -189,6 +218,7 @@ Die Tests prüfen derzeit unter anderem:
 - Service-Ladereihenfolge
 - Ermittlung von Nachbar-Services, Caching, lokale Aufrufe und Remote-Fallback
 - Explorer-Befehlsregistrierung, Service-Namensvalidierung und paketierte Startskripte
+- Validierung des verpflichtenden Workspaces und injectionsicheres Rendering des Startskripts
 - positionsstabile Typverarbeitung
 - Schutz von Strings, Kommentaren und regulären Ausdrücken
 - Referenzparameter und Rückschreiben
@@ -208,7 +238,7 @@ Eine installierbare Extension wird mit `@vscode/vsce` erstellt:
 npx --yes @vscode/vsce package --no-dependencies --allow-missing-repository
 ```
 
-`--no-dependencies` ist vorgesehen, weil die Extension keine produktiven npm-Abhängigkeiten besitzt. Das Paket dieser Version heißt `siebel-escript-dbger-0.3.0.vsix`. Oracle-JARs sind darin nicht enthalten.
+`--no-dependencies` ist vorgesehen, weil die Extension keine produktiven npm-Abhängigkeiten besitzt. Das Paket dieser Version heißt `siebel-escript-dbger-0.4.0.vsix`. Oracle-JARs sind darin nicht enthalten.
 
 ## Änderungen an der allgemeinen Service-Implementierung
 

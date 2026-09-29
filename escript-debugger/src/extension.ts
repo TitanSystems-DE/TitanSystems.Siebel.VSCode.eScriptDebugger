@@ -14,7 +14,13 @@ export function activate(context: vscode.ExtensionContext): void {
   const store = new ProfileStore(context);
   const status = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 20);
   status.command = 'escript.connections'; context.subscriptions.push(status);
-  const refresh = () => { const name = vscode.workspace.getConfiguration('escriptDebugger').get<string>(activeSetting); status.text = `$(debug-alt) Siebel: ${name || 'no connection'}`; status.show(); };
+  const refresh = () => {
+    const name = vscode.workspace.getConfiguration('escriptDebugger').get<string>(activeSetting);
+    const profile = name ? store.get(name) : undefined;
+    const workspace = profile?.workspace?.trim();
+    status.text = `$(debug-alt) Siebel: ${name || 'no connection'}${workspace ? ` (${workspace})` : ''}`;
+    status.show();
+  };
   refresh();
   const uiActions: UiActions = {
     launch: (program, connection, noDebug, service, onOutputs) => launchProgram(store, context, program, connection, noDebug, service, onOutputs),
@@ -117,6 +123,16 @@ async function resolveLaunch(store: ProfileStore, context: vscode.ExtensionConte
   let profile = requested ? store.get(requested) : undefined;
   if (!profile) profile = await selectProfile(store);
   if (!profile) { void vscode.window.showErrorMessage('Create or select a Siebel connection first.'); return; }
+  const configuredWorkspace = profile.workspace?.trim();
+  const workspaceName = configuredWorkspace || await vscode.window.showInputBox({
+    title: 'Siebel workspace',
+    prompt: `Enter the workspace for connection '${profile.name}'.`,
+    placeHolder: 'Workspace name',
+    ignoreFocusOut: true,
+    validateInput: value => value.trim() ? undefined : 'A workspace is required to run Siebel eScript'
+  });
+  if (!workspaceName?.trim()) { void vscode.window.showErrorMessage('A Siebel workspace is required before the script can run.'); return; }
+  profile = { ...profile, workspace: workspaceName.trim() };
   const password = await store.password(profile.name);
   if (password === undefined) { void vscode.window.showErrorMessage(`No password stored for connection '${profile.name}'.`); return; }
   const runtime = await oracleRuntime(context, profile.language); if (!runtime) return;
@@ -130,7 +146,7 @@ async function resolveLaunch(store: ProfileStore, context: vscode.ExtensionConte
     stopOnEntry: config.stopOnEntry, sourceMaps: true,
     autoAttachChildProcesses: false,
     skipFiles: ['<node_internals>/**', `${context.extensionPath.replace(/\\/g, '/')}/dist/runtime/**`],
-    env, console: 'integratedTerminal', internalConsoleOptions: 'neverOpen'
+    env, console: 'internalConsole', internalConsoleOptions: 'openOnSessionStart'
   };
 }
 
@@ -165,9 +181,10 @@ async function selectProfile(store: ProfileStore): Promise<ConnectionProfile | u
 }
 
 async function manageConnections(store: ProfileStore, refresh: () => void): Promise<void> {
-  const action = await vscode.window.showQuickPick(['$(add) Add connection', '$(check) Select active connection', '$(edit) Edit connection', '$(trash) Remove connection', '$(plug) Test connection'], { placeHolder: 'Manage Siebel connections' });
+  const action = await vscode.window.showQuickPick(['$(add) Add connection', '$(check) Select active connection', '$(folder) Set workspace for active connection', '$(edit) Edit connection', '$(trash) Remove connection', '$(plug) Test connection'], { placeHolder: 'Manage Siebel connections' });
   if (!action) return;
   if (action.includes('Add')) await createProfile(store);
+  else if (action.includes('Set workspace')) await setActiveWorkspace(store);
   else {
     const names = store.all().map(p => p.name); const name = await vscode.window.showQuickPick(names, { placeHolder: 'Connection' }); if (!name) return;
     if (action.includes('Select')) await vscode.workspace.getConfiguration('escriptDebugger').update(activeSetting, name, vscode.ConfigurationTarget.Global);
@@ -178,13 +195,29 @@ async function manageConnections(store: ProfileStore, refresh: () => void): Prom
   refresh();
 }
 
+async function setActiveWorkspace(store: ProfileStore): Promise<void> {
+  const activeName = vscode.workspace.getConfiguration('escriptDebugger').get<string>(activeSetting);
+  const profile = activeName ? store.get(activeName) : undefined;
+  if (!profile) { void vscode.window.showErrorMessage('Select an active Siebel connection first.'); return; }
+  const workspace = await vscode.window.showInputBox({
+    title: 'Siebel workspace',
+    prompt: `Set the workspace for active connection '${profile.name}'.`,
+    value: profile.workspace || '',
+    ignoreFocusOut: true,
+    validateInput: value => value.trim() ? undefined : 'A workspace is required'
+  });
+  if (workspace === undefined) return;
+  await store.save({ ...profile, workspace: workspace.trim() });
+}
+
 async function createProfile(store: ProfileStore, current?: ConnectionProfile): Promise<ConnectionProfile | undefined> {
   const name = await vscode.window.showInputBox({ title: 'Connection name', value: current?.name, validateInput: v => v.trim() ? undefined : 'A name is required' }); if (!name) return;
   const url = await vscode.window.showInputBox({ title: 'Siebel connection string', value: current?.url || 'siebel://server:2321/ENT/EAIObjMgr_enu', validateInput: v => /^siebel(?:\.ssl|\.tls)?\.[^:]+:\/\//.test(v) || /^siebel:\/\//.test(v) ? undefined : 'Enter a valid siebel:// connection string' }); if (!url) return;
   const username = await vscode.window.showInputBox({ title: 'Siebel user', value: current?.username }); if (username === undefined) return;
   const password = await vscode.window.showInputBox({ title: 'Siebel password', password: true, prompt: current ? 'Leave empty to keep the stored password' : undefined }); if (password === undefined) return;
   const language = await vscode.window.showInputBox({ title: 'Language', value: current?.language || 'enu' }); if (!language) return;
-  const profile = { name: name.trim(), url: url.trim(), username, language };
+  const workspace = await vscode.window.showInputBox({ title: 'Siebel workspace', value: current?.workspace || '', prompt: 'Optional here; if empty, it must be entered before each run.' }); if (workspace === undefined) return;
+  const profile = { name: name.trim(), url: url.trim(), username, language, workspace: workspace.trim() || undefined };
   await store.save(profile, password || (current ? undefined : ''));
   await vscode.workspace.getConfiguration('escriptDebugger').update(activeSetting, profile.name, vscode.ConfigurationTarget.Global);
   return profile;

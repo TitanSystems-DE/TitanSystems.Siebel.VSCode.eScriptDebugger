@@ -28,12 +28,31 @@ Die Verbindungsverwaltung bietet folgende Aktionen:
 - neue Siebel-Verbindung anlegen
 - vorhandene Verbindung bearbeiten
 - aktive Verbindung auswählen
+- Workspace der aktiven Verbindung festlegen
 - Verbindung testen
 - Verbindung entfernen
 
-Ein Profil enthält Name, Siebel-Verbindungszeichenfolge, Benutzername und Sprache. Das Kennwort wird im SecretStorage von VS Code gespeichert und nicht in den Einstellungen oder Skriptdateien abgelegt.
+Ein Profil enthält Name, Siebel-Verbindungszeichenfolge, Benutzername, Sprache und einen optionalen Siebel Repository Workspace. Das Kennwort wird im SecretStorage von VS Code gespeichert und nicht in den Einstellungen oder Skriptdateien abgelegt.
 
-Die aktive Verbindung wird in der VS-Code-Statusleiste angezeigt. In der Startzentrale kann für jede Ausführung ein anderes Profil ausgewählt werden.
+Die aktive Verbindung und ihr konfigurierter Workspace werden in der VS-Code-Statusleiste angezeigt, zum Beispiel `Siebel: DEV (dev_sadmin_demo)`. Ein Klick auf den Statusleisteneintrag öffnet die Verbindungsverwaltung. Mit **Set workspace for active connection** wird der Workspace der aktiven Verbindung geändert. Auch die Verbindungsauswahl der Startzentrale verwendet bewusst nur die kompakte Schreibweise `Verbindung (Workspace)`; Benutzername und Connection String werden dort nicht angezeigt.
+
+### Siebel-Workspace-Kontext
+
+Mit *Workspace* ist in Verbindung mit einem Profil immer ein **Siebel Repository Workspace** gemeint, nicht der in VS Code geöffnete Projektordner oder eine `.code-workspace`-Datei. Der Workspace gehört zum Verbindungsprofil, weil Name und Verfügbarkeit von der jeweiligen Siebel-Umgebung abhängen. Beispielsweise kann `DEV` den Workspace `dev_sadmin_demo` verwenden, während für `TEST` ein anderer Workspace erforderlich ist.
+
+Der konfigurierte Workspace ist der Ausführungskontext für den Standalone- und den Service-Modus. Jeder Start durchläuft folgende Schritte:
+
+1. Die in der Startzentrale gewählte Verbindung wird verwendet; ohne explizite Auswahl gilt die aktive Verbindung.
+2. Die Extension ermittelt den im Verbindungsprofil gespeicherten Workspace.
+3. Nach dem Login sucht die Runtime den Workspace anhand seines exakten `Name` im Business Component `Repository Workspace`.
+4. Die Runtime ruft zuerst `OpenWS` und danach `PreviewWS` auf.
+5. Erst wenn beide Operationen erfolgreich waren, wird das angeforderte Skript beziehungsweise der Service-Einstiegspunkt ausgeführt.
+
+Damit läuft Entwicklercode nicht versehentlich außerhalb des vorgesehenen Repository-Kontexts. Die Workspace-Aktivierung erfolgt bei jedem Start erneut; eine zuvor aufgebaute Siebel-Sitzung darf nicht als weiterhin korrekt konfiguriert vorausgesetzt werden.
+
+Hat ein Profil keinen gespeicherten Workspace, zeigt die Startzentrale `Verbindung (workspace required)`. Beim Start erscheint dann ein Eingabefeld. Dieser Wert gilt nur für den aktuellen Lauf; mit **Set workspace for active connection** wird er dauerhaft im Profil gespeichert. Wird die Eingabe abgebrochen oder leer gelassen, findet kein Start statt. Auch ein nicht vorhandener oder nicht zugänglicher Workspace sowie ein Fehler bei `OpenWS` oder `PreviewWS` beenden den Start, bevor eigener eScript-Code geladen wird.
+
+Wird in der Startzentrale eine Verbindung gewählt, wird sie beim Start zugleich zur aktiven Verbindung. Die Statusleiste zeigt danach dieses Profil samt Workspace. **Test connection** prüft lediglich Login und Serverkommunikation; der konfigurierte Workspace wird dabei weder geöffnet noch validiert.
 
 ## Startzentrale
 
@@ -52,7 +71,7 @@ Die kompakte Ansicht steht dauerhaft in der VS-Code-Seitenleiste zur Verfügung.
 
 ![Siebel eScript Debugger im Standalone-Modus](docs/screenshots/standalone.png)
 
-Im Standalone-Modus werden die aktive Datei und das gewählte Verbindungsprofil direkt in der Startzentrale angezeigt. Von dort lässt sich das Skript mit oder ohne Debugger starten.
+Im Standalone-Modus werden die aktive Datei und das gewählte Verbindungsprofil als `Verbindung (Workspace)` direkt in der Startzentrale angezeigt. Von dort lässt sich das Skript mit oder ohne Debugger starten.
 
 ### Oberfläche im Service-Modus
 
@@ -229,10 +248,12 @@ Die Extension unterstützt die üblichen Funktionen des VS-Code-Debuggers:
 - Einzelschritt, Prozedurschritt und Rücksprung
 - Variablenansicht
 - Call Stack
-- Live-Ausgabe von `Clib.WriteLn` und `Clib.puts` im integrierten Terminal
+- Live-Ausgabe von `Clib.WriteLn` und `Clib.puts` in der Debugkonsole
 - Stoppen und Neustarten der Ausführung
 
 Im Service-Modus werden alle geladenen Dateien unter ihrem ursprünglichen Dateipfad ausgeführt. Breakpoints können daher auch in Hilfsfunktionen oder gemeinsam verwendeten Skripten gesetzt werden.
+
+Der Runner wird mit der internen Debugkonsole von VS Code gestartet. Es wird kein integriertes Terminal geöffnet; dadurch erscheint die von VS Code generierte Prozessumgebung nicht als lange PowerShell-Befehlszeile. Das gilt beim Debuggen ebenso wie für **Run without debugging**.
 
 ### PropertySets untersuchen
 
@@ -388,7 +409,7 @@ Standalone-Debugging kann alternativ über `.vscode/launch.json` gestartet werde
 }
 ```
 
-Ohne `connection` verwendet die Extension das aktive Verbindungsprofil.
+Ohne `connection` verwendet die Extension das aktive Verbindungsprofil. Der Workspace wird nicht separat in `launch.json` konfiguriert, sondern wie oben beschrieben aus dem ausgewählten Verbindungsprofil ermittelt.
 
 ## Grenzen und Hinweise
 

@@ -28,12 +28,15 @@ escript-debugger/
 │   ├── local-service-runtime.mjs
 │   │                          Local service resolution and isolation
 │   ├── service-scaffold.mjs  Service folder-name validation
+│   ├── workspace-runtime.mjs Workspace validation and template rendering
 │   ├── type-stripper.mjs     ST eScript type processing
 │   └── reference-transformer.mjs
 │                              Call-by-reference transformation
 ├── service-implementation.escript
 ├── assets/
 │   ├── icon.png              VSIX and extension view icon
+│   ├── templates/ws-change.escript
+│   │                          Workspace open/preview startup script
 │   └── templates/service-scripts/
 │                              New-service starter scripts
 ├── typings/
@@ -63,11 +66,37 @@ The runner deliberately executes eScript as a classic, non-strict script so lega
 
 A `DebugConfigurationProvider` translates the `escript` debug type into a Node launch configuration. The built-in JavaScript debugger starts `dist/runtime/runner.mjs`.
 
-The runner always uses VS Code's integrated terminal. `Clib.WriteLn` and `Clib.puts` write synchronously to the standard-output file descriptor, bypassing debugger console interception and stream buffering. Their output therefore appears live in the terminal during both debugging and run-without-debugging sessions. The Debug Console is not opened for eScript output.
+The generated Node launch configuration uses `console: 'internalConsole'` and `internalConsoleOptions: 'openOnSessionStart'`. `Clib.WriteLn` and `Clib.puts` write synchronously to standard output, and VS Code presents that stream in the Debug Console during both debugging and run-without-debugging sessions. No integrated terminal is created, so VS Code does not echo its environment-variable setup as a PowerShell command.
 
 Each source file is executed through `vm.Script` with an inline source map. Every generated runtime line maps to the same line in the original `.escript` file. VS Code can consequently bind gutter breakpoints before a dynamically loaded script exists and show its original source in the call stack. When execution pauses, locals and globals are available in the standard Variables, Watch, and Debug Console views.
 
-Connection data is Base64-encoded and passed to the launched process through `SIEBEL_ESCRIPT_CONNECTION`; it is removed from the process environment immediately after being read. The extension host stores the password exclusively through `ExtensionContext.secrets`.
+Connection data, including the required launch workspace, is Base64-encoded and passed to the launched process through `SIEBEL_ESCRIPT_CONNECTION`; it is removed from the process environment immediately after being read. Base64 is transport encoding, not encryption. The extension host persists the password exclusively through `ExtensionContext.secrets`; non-secret profile fields, including the workspace name, live in `ExtensionContext.globalState`. Using the internal console prevents the encoded payload from being echoed into terminal history.
+
+## Connection and workspace lifecycle
+
+The term *workspace* in the runtime means a Siebel Repository Workspace. It is unrelated to `vscode.WorkspaceFolder`. The latter only determines the source-file/debug-session context, while `ConnectionProfile.workspace` determines the server-side repository context in which eScript executes.
+
+`ProfileStore` persists profiles under `escriptDebugger.connections`. Each profile has `{ name, url, username, language, workspace? }`; its password uses a separate SecretStorage key. The setting `escriptDebugger.activeConnection` stores the active profile name. The status-bar renderer combines that name with the profile's current workspace as `Siebel: <connection> (<workspace>)`. The Webview uses `<connection> (<workspace>)` as well and intentionally excludes the URL and user name.
+
+Workspace resolution happens in `resolveLaunch` before a debug configuration is returned:
+
+1. `config.connection` wins when supplied by the launcher or `launch.json`; otherwise `escriptDebugger.activeConnection` is used.
+2. If that profile has a non-empty `workspace`, it becomes the launch workspace.
+3. Otherwise an input box requires a non-empty name. This fallback is copied into the in-memory launch profile only and is not persisted. Persistence is deliberately explicit through **Set workspace for active connection**.
+4. The resolved profile and password are serialized into the launch payload. A launch can therefore never reach the runner without a non-empty workspace.
+
+Selecting a profile in the Webview updates the active connection when the launch starts. Changing the workspace through the connection manager saves a new copy of the active profile without passing a password to `ProfileStore.save`, so the existing SecretStorage value remains unchanged. The status bar is refreshed after the operation. **Test connection** currently performs login, server-version lookup, and logoff only; it does not execute the workspace startup sequence.
+
+At process start, `runner.mjs` reads and deletes `SIEBEL_ESCRIPT_CONNECTION`, initializes the Java Data Bean bridge, and then performs workspace activation before loading any user source:
+
+1. `workspace-runtime.mjs` trims and validates the workspace name.
+2. It injects the name into `assets/templates/ws-change.escript`. `JSON.stringify`-style escaping preserves the JavaScript string literal and prevents a workspace name from injecting eScript source.
+3. The startup script queries the `Repository Workspace` business component with `AllView` and an exact name expression.
+4. `FirstRecord` must find the workspace; otherwise the startup script throws.
+5. The script invokes `OpenWS` followed by `PreviewWS`.
+6. Only after this sequence completes does the runner dispatch the Standalone source or Service entry point.
+
+Any validation, lookup, `OpenWS`, or `PreviewWS` failure propagates through the normal runner error path, sets a non-zero exit code, and prevents user code from running. The sequence is repeated on every launch so correctness does not depend on state retained by an earlier Siebel session.
 
 ## Webview and Activity Bar
 
@@ -189,6 +218,7 @@ The current test suite covers, among other things:
 - service load order
 - sibling-service discovery, caching, local invocation, and remote fallback
 - Explorer command registration, service-name validation, and packaged starter templates
+- required workspace validation and injection-safe startup-script rendering
 - position-preserving type processing
 - protection of strings, comments, and regular expressions
 - reference parameters and write-back behavior
@@ -208,7 +238,7 @@ Create an installable extension with `@vscode/vsce`:
 npx --yes @vscode/vsce package --no-dependencies --allow-missing-repository
 ```
 
-`--no-dependencies` is intentional because the extension has no production npm dependencies. The resulting package for this release is `siebel-escript-dbger-0.3.0.vsix`. Oracle JARs are never included.
+`--no-dependencies` is intentional because the extension has no production npm dependencies. The resulting package for this release is `siebel-escript-dbger-0.4.0.vsix`. Oracle JARs are never included.
 
 ## Changing the general service implementation
 

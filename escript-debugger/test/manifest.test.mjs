@@ -17,4 +17,5 @@ test('contributes the Add Siebel Service Explorer command and packages its templ
     contribution.command === 'escript.addSiebelService' && contribution.when === 'explorerResourceIsFolder'
   ));
   assert.ok(manifest.files.includes('assets/templates/service-scripts/*.escript'));
+  assert.ok(manifest.files.includes('assets/templates/ws-change.escript'));
 });

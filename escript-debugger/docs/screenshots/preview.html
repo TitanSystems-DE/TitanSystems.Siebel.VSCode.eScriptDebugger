@@ -7,7 +7,7 @@
 <div class="card service-card"><div class="mode-title"><svg class="mode-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="7" height="6" rx="1.5"/><rect x="14" y="4" width="7" height="6" rx="1.5"/><rect x="8.5" y="15" width="7" height="5" rx="1.5"/><path d="M6.5 10v2.5H12V15m5.5-5v2.5H12"/></svg><strong>Service</strong></div><span class="muted">Build a shared folder runtime.</span></div></div>
 <div class="label">Script</div><div class="field"><div class="filename">ContactQuery.escript</div><div class="path">services/contact/ContactQuery.escript</div><div class="buttons"><button>Active editor</button><button>Choose…</button></div></div>
 <div class="service-only"><div class="label">Service entry point</div><div class="field"><div class="buttons"><button class="primary">InvokeMethod</button><button>Direct</button></div><div class="label" style="margin-top:13px">Method name</div><input value="QueryContacts"><div class="label" style="margin-top:13px">Input properties</div><div class="props"><input value="SearchSpec"><input value="[Last Name] LIKE 'M*'"><input value="ViewMode"><input value="AllView"></div><div class="buttons"><button>+ Add property</button></div></div><div class="label">Output properties</div><div class="field"><table class="output"><tr><td>RecordCount</td><td>12</td></tr><tr><td>Status</td><td>Success</td></tr></table></div></div>
-<div class="label">Connection</div><div class="field"><select><option>Development — SADMIN@siebel-dev</option></select><div class="buttons"><button>Manage connections</button></div></div><div class="footer"><button>Run</button><button class="primary">Start debugging</button></div></div></aside>
+<div class="label">Connection</div><div class="field"><select><option>Development (dev_sadmin_demo)</option></select><div class="buttons"><button>Manage connections</button></div></div><div class="footer"><button>Run</button><button class="primary">Start debugging</button></div></div></aside>
 <main class="editor"><div class="tabs"><div class="tab">ContactQuery.escript</div></div><div class="code"><div class="nums">1
 2
 3
@@ -28,5 +28,5 @@ oBC.<span class="fn">SetSearchSpec</span>(<span class="str">"Last Name"</span>, 
 
 <span class="kw">if</span> (oBC.<span class="fn">FirstRecord</span>()) {
   Clib.<span class="fn">WriteLn</span>(oBC.<span class="fn">GetFieldValue</span>(<span class="str">"Last Name"</span>));
-}</div></div></main><div class="status">● Siebel: Development</div></div>
+}</div></div></main><div class="status">● Siebel: Development (dev_sadmin_demo)</div></div>
 <script>if(location.search.includes('service')){document.body.classList.add('service');document.querySelector('.standalone-card').classList.remove('active');document.querySelector('.standalone-card .pill').remove();document.querySelector('.service-card').classList.add('active');document.querySelector('.service-card').insertAdjacentHTML('afterbegin','<span class="pill">Selected</span>')}</script></body></html>

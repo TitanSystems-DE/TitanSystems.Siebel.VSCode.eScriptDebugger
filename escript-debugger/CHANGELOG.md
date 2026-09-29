@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.4.0 - 2026-09-29
+
+- Adds an optional Siebel Repository Workspace to each connection profile and requires a workspace before every launch.
+- Opens and previews the selected workspace before loading Standalone or Service user code; workspace failures abort execution.
+- Adds **Set workspace for active connection** to the connection manager.
+- Shows `connection (workspace)` in the status bar and debugger connection selector while omitting connection strings and user names from the selector.
+- Maps variadic eScript Business Component `InvokeMethod` arguments to the `String[]` signature expected by Oracle's Java Data Bean while preserving PropertySet arguments for Business Service calls.
+- Sends runner output to the VS Code Debug Console instead of opening an integrated terminal, preventing launch environment variables from being echoed as a PowerShell command.
+- Replaces the Activity Bar artwork with a simpler monochrome code-and-debug icon that follows the active VS Code theme.
+- Vertically aligns the `InvokeMethod`, `Direct`, and **Debug local sibling services** controls in the debugger UI.
+- Expands the English and German user and technical documentation for workspace selection, activation, validation, persistence, and failure handling.
+- Adds regression coverage for workspace template rendering, packaging, and BusComp `InvokeMethod` argument conversion.
+
 ## 0.3.0 - 2026-09-29
 
 - Adds a **Debug local sibling services** option to Service mode.
