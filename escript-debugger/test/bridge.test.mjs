@@ -1,6 +1,10 @@
 import assert from 'node:assert/strict';
+import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import test from 'node:test';
 import { decode, encode } from '../dist/runtime/sync-bridge.mjs';
+import { publishRequest } from '../dist/runtime/oracle-client.mjs';
 import { SIEBEL_CONSTANTS } from '../dist/runtime/constants.mjs';
 import { adaptSiebelCall } from '../dist/runtime/siebel-call.mjs';
 import { directMethodName, serviceScriptPlan } from '../dist/runtime/service-runtime.mjs';
@@ -8,6 +12,18 @@ import { stripSiebelTypes } from '../dist/runtime/type-stripper.mjs';
 import { collectReferenceSignatures, transformSiebelReferences } from '../dist/runtime/reference-transformer.mjs';
 import { debuggableScript } from '../dist/runtime/source-map.mjs';
 import vm from 'node:vm';
+
+test('publishes complete bridge requests with an atomic rename', () => {
+  const directory = mkdtempSync(join(tmpdir(), 'siebel-request-test-'));
+  const requestFile = join(directory, 'request');
+  try {
+    publishRequest(requestFile, 'CALL\t7\tbmFtZQ==\t1\tSdmFsdWU=\n');
+    assert.equal(readFileSync(requestFile, 'utf8'), 'CALL\t7\tbmFtZQ==\t1\tSdmFsdWU=\n');
+    assert.equal(existsSync(`${requestFile}.tmp`), false);
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
 
 test('remote facade maps Siebel PascalCase methods and handles', () => {
   const calls = [], bridge = { call(op, target, args) { calls.push({ op, target, args }); return { __handle: 9 }; } };

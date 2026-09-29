@@ -47,6 +47,8 @@ Die Extension besteht aus drei Laufzeitbereichen:
 
 Der Runner stellt eScript-Aufrufe synchron bereit, während Oracles Java Data Bean in einem separaten Java-Prozess läuft. `sync-bridge.mjs` sendet Operationen an den Worker. Dieser übergibt sie über eine dateibasierte Request-/Response-Schnittstelle an `OracleSiebelBridge`; Siebel-Objekte werden über numerische Handles als synchrone Proxies dargestellt.
 
+Worker und Java-Prozess tauschen tabulatorgetrennte Pakete über Request- und Response-Dateien in einem privaten temporären Verzeichnis aus. Beide Seiten schreiben ein vollständiges Paket zunächst in eine benachbarte `.tmp`-Datei und benennen diese anschließend atomar auf den überwachten Pfad um. Dadurch kann der abfragende Leser keine Datei zwischen ihrer Erstellung und Fertigstellung beobachten. Die Java-Bridge validiert außerdem den Paket-Header und die deklarierte Argumentanzahl vor der Ausführung und meldet ungültige Pakete als Protokollfehler.
+
 PascalCase-Aufrufe wie `GetBusObject` werden an der Proxy-Grenze an die entsprechenden Operationen der Java Data Bean weitergegeben.
 
 Der Runner führt eScript bewusst als klassisches, nicht-striktes Skript aus, damit ältere `with (object)`-Anweisungen gültig bleiben. Remote-Siebel-Proxies melden die bekannte synchrone API bei der JavaScript-Namensauflösung, sodass unqualifizierte Aufrufe wie `with (bc) { FirstRecord(); }` funktionieren, ohne andere lokale oder globale Bezeichner abzufangen.
@@ -166,6 +168,7 @@ Die Tests prüfen derzeit unter anderem:
 - PascalCase-Proxy und Objekt-Handles
 - vollständigen Konstantensatz
 - Konvertierung der Cursor-Modi für die Java Data Bean
+- atomare Veröffentlichung von Request-Paketen der Java-Bridge
 - übereinstimmende und abweichende `Siebel.jar`-Hashes
 - Service-Ladereihenfolge
 - positionsstabile Typverarbeitung
@@ -187,7 +190,7 @@ Eine installierbare Extension wird mit `@vscode/vsce` erstellt:
 npx --yes @vscode/vsce package --no-dependencies --allow-missing-repository
 ```
 
-`--no-dependencies` ist vorgesehen, weil die Extension keine produktiven npm-Abhängigkeiten besitzt. Das Paket dieser Version heißt `siebel-escript-dbger-0.2.0.vsix`. Oracle-JARs sind darin nicht enthalten.
+`--no-dependencies` ist vorgesehen, weil die Extension keine produktiven npm-Abhängigkeiten besitzt. Das Paket dieser Version heißt `siebel-escript-dbger-0.2.1.vsix`. Oracle-JARs sind darin nicht enthalten.
 
 ## Änderungen an der allgemeinen Service-Implementierung
 

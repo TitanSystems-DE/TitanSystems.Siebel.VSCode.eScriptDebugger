@@ -47,6 +47,8 @@ The extension consists of three runtime areas:
 
 The runner exposes synchronous eScript calls while Oracle's Java Data Bean runs in a separate Java process. `sync-bridge.mjs` sends operations through a worker, which forwards them to `OracleSiebelBridge.java`; Siebel objects are represented by numeric handles.
 
+The worker and Java process exchange tab-separated packets through request and response files in a private temporary directory. Each side writes a complete packet to a sibling `.tmp` file and then atomically renames it to the watched path. This prevents the polling reader from observing a file between creation and completion. The Java bridge also validates the packet header and declared argument count before dispatch and reports malformed packets as protocol errors.
+
 PascalCase calls such as `GetBusObject` are forwarded by the proxy boundary to the corresponding Java Data Bean operations.
 
 The runner deliberately executes eScript as a classic, non-strict script so legacy `with (object)` statements remain valid. Remote Siebel proxies advertise the known synchronous API during JavaScript's scope lookup, allowing unqualified calls such as `with (bc) { FirstRecord(); }` while leaving unrelated local and global identifiers untouched.
@@ -166,6 +168,7 @@ The current test suite covers, among other things:
 - PascalCase proxies and object handles
 - the complete constant set
 - cursor-mode conversion for the Java Data Bean
+- atomic publication of Java bridge request packets
 - matching and differing `Siebel.jar` hashes
 - service load order
 - position-preserving type processing
@@ -187,7 +190,7 @@ Create an installable extension with `@vscode/vsce`:
 npx --yes @vscode/vsce package --no-dependencies --allow-missing-repository
 ```
 
-`--no-dependencies` is intentional because the extension has no production npm dependencies. The resulting package for this release is `siebel-escript-dbger-0.2.0.vsix`. Oracle JARs are never included.
+`--no-dependencies` is intentional because the extension has no production npm dependencies. The resulting package for this release is `siebel-escript-dbger-0.2.1.vsix`. Oracle JARs are never included.
 
 ## Changing the general service implementation
 

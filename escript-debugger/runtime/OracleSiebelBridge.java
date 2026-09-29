@@ -45,9 +45,15 @@ public class OracleSiebelBridge {
       objects.put(0, app); handles.put(app, 0); ok(null); return;
     }
     if (command.equals("CLOSE")) { ok(null); return; }
+    if (p.length < 4) throw new IllegalArgumentException("Malformed bridge request: incomplete header");
+    int count;
+    try { count = Integer.parseInt(p[3]); }
+    catch (NumberFormatException error) { throw new IllegalArgumentException("Malformed bridge request: invalid argument count", error); }
+    if (count < 0 || p.length != 4 + count)
+      throw new IllegalArgumentException("Malformed bridge request: expected "+count+" argument(s), received "+Math.max(0, p.length-4));
     int target = Integer.parseInt(p[1]); Object receiver = objects.get(target);
     if (receiver == null) throw new IllegalStateException("Invalid or released Siebel object");
-    String method = text(p[2]); int count = Integer.parseInt(p[3]); Object[] raw = new Object[count];
+    String method = text(p[2]); Object[] raw = new Object[count];
     for (int i=0; i<count; i++) raw[i] = decode(p[4+i]);
     MethodMatch match = find(receiver.getClass(), method, raw);
     Object result = match.method.invoke(receiver, match.args);

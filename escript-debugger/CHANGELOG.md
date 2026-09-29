@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.1 - 2026-09-29
+
+- Publishes Java bridge requests with an atomic temporary-file rename so the Java process cannot observe empty or partially written packets.
+- Validates bridge packet headers and argument counts before dispatch, replacing low-level array-index failures with actionable malformed-request errors.
+- Adds an automated regression test for atomic request publication.
+
 ## 0.2.0 - 2026-09-28
 
 - Correctly maps eScript cursor modes `ForwardBackward` and `ForwardOnly` to the Boolean arguments expected by the Java Data Bean for `ExecuteQuery` and `ExecuteQuery2`.
