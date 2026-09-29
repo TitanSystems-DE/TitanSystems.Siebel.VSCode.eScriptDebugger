@@ -38,6 +38,7 @@ export class OracleSiebelClient {
     if (value === null || value === undefined) return 'Z';
     if (value && typeof value === 'object' && value.__handle !== undefined) return `H${value.__handle}`;
     if (Buffer.isBuffer(value) || value instanceof Uint8Array) return `Y${Buffer.from(value).toString('base64')}`;
+    if (Array.isArray(value)) return `A${value.length}:${value.map(item => b64(item ?? '')).join('.')}`;
     if (typeof value === 'boolean') return value ? 'B1' : 'B0';
     if (typeof value === 'number') return `D${value}`;
     return `S${b64(value)}`;

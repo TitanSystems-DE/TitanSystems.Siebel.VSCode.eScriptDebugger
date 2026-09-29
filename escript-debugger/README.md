@@ -27,12 +27,31 @@ The connection manager lets you:
 - create a Siebel connection
 - edit an existing connection
 - select the active connection
+- set the workspace for the active connection
 - test a connection
 - remove a connection
 
-A profile contains a name, Siebel connection string, user name, and language. The password is stored in VS Code SecretStorage, never in settings or script files.
+A profile contains a name, Siebel connection string, user name, language, and an optional Siebel Repository Workspace. The password is stored in VS Code SecretStorage, never in settings or script files.
 
-The active connection appears in the VS Code status bar. A different profile can be selected for each run in the launcher.
+The active connection and its configured workspace appear in the VS Code status bar, for example `Siebel: DEV (dev_sadmin_demo)`. Click the status bar item to manage the connection or use **Set workspace for active connection**. The debugger's connection list uses the same compact `connection (workspace)` notation and deliberately omits the user name and connection string.
+
+### Siebel workspace context
+
+In this documentation, *workspace* in connection-related text means a **Siebel Repository Workspace**, not the folder or `.code-workspace` file opened in VS Code. The workspace belongs to a connection profile because names and availability can differ between Siebel environments. For example, `DEV` can use `dev_sadmin_demo`, while `TEST` uses a different workspace.
+
+The configured workspace is the execution context for both Standalone and Service mode. Every launch follows this order:
+
+1. The launcher-selected connection is used, or the active connection when no explicit profile was selected.
+2. The workspace stored in that connection profile is resolved.
+3. The extension logs in to Siebel and looks up the workspace by its exact `Name` in `Repository Workspace`.
+4. The runtime invokes `OpenWS` and then `PreviewWS`.
+5. Only after both operations succeed does the requested script or service entry point run.
+
+This prevents code from accidentally running outside the intended repository context. Workspace activation happens again for every launch; do not assume that a previous Siebel session is still in the correct workspace.
+
+If a profile has no stored workspace, its debugger entry shows `connection (workspace required)`. Starting it opens an input box. That value applies to the current launch only; use **Set workspace for active connection** to persist it in the profile. Cancelling the input or entering an empty value stops the launch. A missing workspace, an inaccessible workspace, or a failure during `OpenWS`/`PreviewWS` also stops execution before user code is loaded.
+
+Selecting a connection in the launcher makes it active when the launch begins. The status bar then reflects that profile and workspace. The **Test connection** action verifies login and server communication only; it does not open or validate the configured workspace.
 
 ## Launcher
 
@@ -51,7 +70,7 @@ The compact launcher is permanently available in the VS Code sidebar. **Siebel e
 
 ![Siebel eScript Debugger in Standalone mode](docs/screenshots/standalone.png)
 
-Standalone mode shows the active file and selected connection profile. The script can be started with or without the debugger.
+Standalone mode shows the active file and selected connection profile as `connection (workspace)`. The script can be started with or without the debugger.
 
 ### Service interface
 
@@ -228,10 +247,12 @@ The extension supports the standard VS Code debugging features:
 - step into, step over, and step out
 - Variables view
 - Call Stack
-- live `Clib.WriteLn` and `Clib.puts` output in the integrated terminal
+- live `Clib.WriteLn` and `Clib.puts` output in the Debug Console
 - stopping and restarting execution
 
 In Service mode, every loaded file runs under its original path, so breakpoints also work in helper functions and shared scripts.
+
+The runner is launched with VS Code's internal debug console. No integrated terminal is opened and the generated process environment is therefore not printed as a PowerShell command. This applies to both debugging and **Run without debugging**.
 
 ### Inspecting PropertySets
 
@@ -387,7 +408,7 @@ Standalone debugging can alternatively be launched through `.vscode/launch.json`
 }
 ```
 
-If `connection` is omitted, the extension uses the active connection profile.
+If `connection` is omitted, the extension uses the active connection profile. The workspace is not configured separately in `launch.json`; it is resolved from the selected connection profile as described above.
 
 ## Limitations and notes
 

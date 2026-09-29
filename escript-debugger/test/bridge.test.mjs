@@ -7,7 +7,6 @@ import { decode, encode } from '../dist/runtime/sync-bridge.mjs';
 import { publishRequest } from '../dist/runtime/oracle-client.mjs';
 import { SIEBEL_CONSTANTS } from '../dist/runtime/constants.mjs';
 import { createLocalServiceResolver } from '../dist/runtime/local-service-runtime.mjs';
-import { publishRequest } from '../dist/runtime/oracle-client.mjs';
 import { adaptSiebelCall } from '../dist/runtime/siebel-call.mjs';
 import { directMethodName, localServiceFolders, serviceScriptPlan } from '../dist/runtime/service-runtime.mjs';
 import { stripSiebelTypes } from '../dist/runtime/type-stripper.mjs';
@@ -199,4 +198,17 @@ test('maps eScript query cursor modes to Java Data Bean booleans', () => {
   assert.deepEqual(adaptSiebelCall('executeQuery', [SIEBEL_CONSTANTS.ForwardOnly]), [true]);
   assert.deepEqual(adaptSiebelCall('executeQuery2', [SIEBEL_CONSTANTS.ForwardOnly, true]), [true, true]);
   assert.deepEqual(adaptSiebelCall('setViewMode', [SIEBEL_CONSTANTS.AllView]), [SIEBEL_CONSTANTS.AllView]);
+});
+
+test('maps eScript BusComp InvokeMethod arguments to the Java String array signature', () => {
+  assert.deepEqual(adaptSiebelCall('invokeMethod', ['One']), ['One', []]);
+  assert.deepEqual(adaptSiebelCall('invokeMethod', ['Two', 'first']), ['Two', ['first']]);
+  assert.deepEqual(adaptSiebelCall('invokeMethod', ['Three', 1, true, null]), ['Three', ['1', 'true', '']]);
+});
+
+test('preserves PropertySet arguments for Business Service InvokeMethod calls', () => {
+  const inputs = { __oracleHandle: 1, __oracleKind: 'PropertySet' };
+  const outputs = { __oracleHandle: 2, __oracleKind: 'PropertySet' };
+  assert.deepEqual(adaptSiebelCall('invokeMethod', ['Run', inputs]), ['Run', inputs]);
+  assert.deepEqual(adaptSiebelCall('invokeMethod', ['Run', inputs, outputs]), ['Run', inputs, outputs]);
 });

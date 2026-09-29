@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 
-export interface ConnectionProfile { name: string; url: string; username: string; language: string; }
+export interface ConnectionProfile { name: string; url: string; username: string; language: string; workspace?: string; }
 const profilesKey = 'escriptDebugger.connections';
 const passwordKey = (name: string) => `escriptDebugger.password.${name}`;
 

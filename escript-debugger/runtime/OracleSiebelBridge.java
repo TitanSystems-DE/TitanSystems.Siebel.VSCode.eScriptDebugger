@@ -98,6 +98,17 @@ public class OracleSiebelBridge {
     if(kind=='Z')return null;if(kind=='S')return text(value);if(kind=='B')return value.equals("1");
     if(kind=='D') { double d=Double.parseDouble(value); return d==Math.rint(d) && d>=Integer.MIN_VALUE && d<=Integer.MAX_VALUE ? Integer.valueOf((int)d) : Double.valueOf(d); }
     if(kind=='H')return objects.get(Integer.parseInt(value));if(kind=='Y')return DEC.decode(value);
+    if(kind=='A') {
+      int separator=value.indexOf(':');
+      if(separator<0) throw new IllegalArgumentException("Invalid bridge array argument");
+      int count=Integer.parseInt(value.substring(0,separator));
+      if(count==0) return new String[0];
+      String[] encoded=value.substring(separator+1).split("\\.",-1);
+      if(encoded.length!=count) throw new IllegalArgumentException("Invalid bridge array length");
+      String[] result=new String[count];
+      for(int i=0;i<encoded.length;i++) result[i]=text(encoded[i]);
+      return result;
+    }
     throw new IllegalArgumentException("Invalid bridge argument");
   }
   static void ok(Object value) { protocolOut.println("OK\t"+encode(value)); protocolOut.flush(); }

@@ -9,6 +9,7 @@ import { directMethodName, localServiceFolders, serviceScriptPlan } from './serv
 import { stripSiebelTypes } from './type-stripper.mjs';
 import { collectReferenceSignatures, transformSiebelReferences } from './reference-transformer.mjs';
 import { debuggableScript } from './source-map.mjs';
+import { renderWorkspaceScript } from './workspace-runtime.mjs';
 
 const file = process.argv[2];
 if (!file) throw new Error('Missing .escript program path');
@@ -39,6 +40,9 @@ Object.assign(globalThis, {
 
 let exitCode = 0;
 try {
+  const workspaceTemplateFile = fileURLToPath(new URL('./ws-change.escript', import.meta.url));
+  const workspaceSource = renderWorkspaceScript(readFileSync(workspaceTemplateFile, 'utf8'), connection.profile?.workspace);
+  runScript(workspaceTemplateFile, workspaceSource, collectReferenceSignatures([workspaceSource]));
   const encodedService = process.env.SIEBEL_ESCRIPT_SERVICE;
   delete process.env.SIEBEL_ESCRIPT_SERVICE;
   if (encodedService) {
