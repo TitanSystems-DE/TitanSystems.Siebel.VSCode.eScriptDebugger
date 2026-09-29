@@ -184,6 +184,7 @@ Die Tests prüfen derzeit unter anderem:
 - PascalCase-Proxy und Objekt-Handles
 - vollständigen Konstantensatz
 - Konvertierung der Cursor-Modi für die Java Data Bean
+- atomare Veröffentlichung von Request-Paketen der Java-Bridge
 - übereinstimmende und abweichende `Siebel.jar`-Hashes
 - Service-Ladereihenfolge
 - Ermittlung von Nachbar-Services, Caching, lokale Aufrufe und Remote-Fallback

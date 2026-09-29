@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
 import { decode, encode } from '../dist/runtime/sync-bridge.mjs';
+import { publishRequest } from '../dist/runtime/oracle-client.mjs';
 import { SIEBEL_CONSTANTS } from '../dist/runtime/constants.mjs';
 import { createLocalServiceResolver } from '../dist/runtime/local-service-runtime.mjs';
 import { publishRequest } from '../dist/runtime/oracle-client.mjs';

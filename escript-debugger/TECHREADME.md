@@ -184,6 +184,7 @@ The current test suite covers, among other things:
 - PascalCase proxies and object handles
 - the complete constant set
 - cursor-mode conversion for the Java Data Bean
+- atomic publication of Java bridge request packets
 - matching and differing `Siebel.jar` hashes
 - service load order
 - sibling-service discovery, caching, local invocation, and remote fallback
